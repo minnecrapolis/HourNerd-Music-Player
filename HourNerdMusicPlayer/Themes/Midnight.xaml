@@ -1,0 +1,72 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <SolidColorBrush x:Key="HNBackground" Color="#0D1425" />
+  <SolidColorBrush x:Key="HNSidebar" Color="#121D33" />
+  <SolidColorBrush x:Key="HNSurface" Color="#192842" />
+  <SolidColorBrush x:Key="HNInput" Color="#0B1221" />
+  <SolidColorBrush x:Key="HNBorder" Color="#344765" />
+  <SolidColorBrush x:Key="HNText" Color="#EAF1FF" />
+  <SolidColorBrush x:Key="HNSecondaryText" Color="#AEBDDB" />
+  <SolidColorBrush x:Key="HNMutedText" Color="#8B9FC5" />
+  <SolidColorBrush x:Key="HNAccent" Color="#95ABFF" />
+  <SolidColorBrush x:Key="HNAccentText" Color="#ADBEFF" />
+  <SolidColorBrush x:Key="HNHover" Color="#223550" />
+  <SolidColorBrush x:Key="HNSelected" Color="#2A3B67" />
+  <SolidColorBrush x:Key="HNSelectedText" Color="#D6DEFF" />
+  <SolidColorBrush x:Key="HNTrack" Color="#334565" />
+  <SolidColorBrush x:Key="HNError" Color="#FF8888" />
+  <SolidColorBrush x:Key="ErrorBrush" Color="#FF8888" />
+  <SolidColorBrush x:Key="ShadeDarkBrush" Color="#0D1425" />
+  <SolidColorBrush x:Key="ShadeMediumDarkBrush" Color="#192842" />
+  <SolidColorBrush x:Key="ShadeMediumBrush" Color="#8B9FC5" />
+  <SolidColorBrush x:Key="ShadeMediumLightBrush" Color="#AEBDDB" />
+  <SolidColorBrush x:Key="ShadeLightBrush" Color="#EAF1FF" />
+  <SolidColorBrush x:Key="TransparencyShadeBrush" Color="#0D1425" />
+  <SolidColorBrush x:Key="MainBGBrush" Color="#0D1425" />
+  <SolidColorBrush x:Key="MainWaitBrush" Color="#0D1425" />
+  <SolidColorBrush x:Key="MainFontBrush" Color="#EAF1FF" />
+  <SolidColorBrush x:Key="ItemBGBrush" Color="#121D33" />
+  <SolidColorBrush x:Key="ItemHoverBrush" Color="#223550" />
+  <SolidColorBrush x:Key="ProgBGBrush" Color="#334565" />
+  <SolidColorBrush x:Key="LinkBrush" Color="#ADBEFF" />
+  <SolidColorBrush x:Key="LinkHoverBrush" Color="#95ABFF" />
+  <SolidColorBrush x:Key="ControlBGBrush" Color="#0B1221" />
+  <SolidColorBrush x:Key="ControlBorderBrush" Color="#344765" />
+  <SolidColorBrush x:Key="ControlSelectBrush" Color="#2A3B67" />
+  <SolidColorBrush x:Key="ControlStrokeBrush" Color="#EAF1FF" />
+  <SolidColorBrush x:Key="ControlGlyphBrush" Color="#EAF1FF" />
+  <SolidColorBrush x:Key="ThemeColor" Color="#95ABFF" />
+  <SolidColorBrush x:Key="ThemeColor2" Color="#ADBEFF" />
+  <SolidColorBrush x:Key="ThemeColor3" Color="#2A3B67" />
+  <SolidColorBrush x:Key="ThemeButtonColor" Color="#95ABFF" />
+  <SolidColorBrush x:Key="ThemeButtonColor2" Color="#2A3B67" />
+  <SolidColorBrush x:Key="ThemeHighlightBackColor" Color="#223550" />
+  <SolidColorBrush x:Key="ButtonHighlightBackColor" Color="#223550" />
+  <SolidColorBrush x:Key="LeftGridColor" Color="#121D33" />
+  <SolidColorBrush x:Key="RightGridColor" Color="#0D1425" />
+  <SolidColorBrush x:Key="BottomGridColor" Color="#192842" />
+  <SolidColorBrush x:Key="SplitterColor" Color="#344765" />
+  <SolidColorBrush x:Key="TextColor" Color="#AEBDDB" />
+  <SolidColorBrush x:Key="TextColor1" Color="#EAF1FF" />
+  <SolidColorBrush x:Key="TextColor2" Color="#AEBDDB" />
+  <SolidColorBrush x:Key="TextColor3" Color="#8B9FC5" />
+  <SolidColorBrush x:Key="MaterialDesignBody" Color="#EAF1FF" />
+  <SolidColorBrush x:Key="MaterialDesignBodyLight" Color="#AEBDDB" />
+  <SolidColorBrush x:Key="MaterialDesignPaper" Color="#0D1425" />
+  <SolidColorBrush x:Key="MaterialDesignCardBackground" Color="#192842" />
+  <SolidColorBrush x:Key="MaterialDesignDivider" Color="#344765" />
+  <SolidColorBrush x:Key="MaterialDesignToolBarBackground" Color="#121D33" />
+  <SolidColorBrush x:Key="MaterialDesignTextBoxBorder" Color="#344765" />
+  <SolidColorBrush x:Key="PrimaryHueMidBrush" Color="#95ABFF" />
+  <SolidColorBrush x:Key="PrimaryHueMidForegroundBrush" Color="#0B1221" />
+  <SolidColorBrush x:Key="SecondaryAccentBrush" Color="#95ABFF" />
+  <SolidColorBrush x:Key="SecondaryAccentForegroundBrush" Color="#0B1221" />
+  <Color x:Key="ShadeDark">#0D1425</Color>
+  <Color x:Key="ShadeMediumDark">#192842</Color>
+  <Color x:Key="ShadeMedium">#8B9FC5</Color>
+  <Color x:Key="ShadeMediumLight">#AEBDDB</Color>
+  <Color x:Key="ShadeLight">#EAF1FF</Color>
+  <Color x:Key="TransparencyShade">#0D1425</Color>
+  <Color x:Key="ErrorShade">#FF8888</Color>
+  <SolidColorBrush x:Key="HNAccentForeground" Color="#13171D" />
+  <SolidColorBrush x:Key="TransparentColor" Color="Transparent" />
+</ResourceDictionary>

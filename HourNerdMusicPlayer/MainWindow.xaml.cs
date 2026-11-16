@@ -1,0 +1,1866 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Forms;
+using System.Windows.Input;
+using BassPlayer;
+using HourNerdMusicPlayer.Hotkeys;
+using HourNerdMusicPlayer.UpdateSystem;
+using GUI.BorderlessWindow;
+using GUI.PageTransition;
+using NDesk.Options;
+using PandoraSharp;
+using PandoraSharpPlayer;
+using Util;
+using Log = Util.Log;
+using UserControl = System.Windows.Controls.UserControl;
+using PandoraSharp.Plugins;
+using System.Windows.Interop;
+using Microsoft.WindowsAPICodePack.Taskbar;
+using System.Windows.Shell;
+using System.Windows.Controls;
+using MaterialDesignColors;
+using System.Linq;
+//Background="#191c1f"
+
+namespace HourNerdMusicPlayer
+{
+    /// <summary>
+    /// Interação lógica para MainWindow.xam
+    /// </summary>
+    public partial class MainWindow : Window
+    {
+        #region Globals
+
+        private readonly ErrorPage _errorPage;
+        private HotKeyHost _keyHost;
+        private readonly LoadingPage _loadingPage;
+        private readonly ToolStripSeparator _notifyMenu_BreakSong = new ToolStripSeparator();
+        private readonly ToolStripSeparator _notifyMenu_BreakStation = new ToolStripSeparator();
+        private readonly ToolStripSeparator _notifyMenu_BreakVote = new ToolStripSeparator();
+        private readonly ToolStripSeparator _notifyMenu_BreakExit = new ToolStripSeparator();
+        private About _aboutPage;
+
+        private string _configLocation;
+
+        private readonly Config _config;
+
+        private bool _finalComplete = false;
+        private StartupOverlay _startupOverlay;
+        private bool _initComplete;
+        private LoginPage _loginPage;
+
+        private UserControl CurrentPage;
+
+
+        private NotifyIcon _notify;
+        private ContextMenuStrip _notifyMenu;
+        private ToolStripMenuItem _notifyMenu_Album;
+        private ToolStripMenuItem _notifyMenu_Artist;
+        private ToolStripMenuItem _notifyMenu_Next;
+        private ToolStripMenuItem _notifyMenu_PlayPause;
+        private ToolStripMenuItem _notifyMenu_Stations;
+        private ToolStripMenuItem _notifyMenu_Title;
+        private ToolStripMenuItem _notifyMenu_UpVote;
+        private ToolStripMenuItem _notifyMenu_DownVote;
+        private ToolStripMenuItem _notifyMenu_Tired;
+        private ToolStripMenuItem _notifyMenu_Exit;
+
+        private ThumbnailToolbarButton _thumbnailToolbarThumbUp;
+        private ThumbnailToolbarButton _thumbnailToolbarThumbDown;
+        private ThumbnailToolbarButton _thumbnailToolbarPlayPause;
+        private ThumbnailToolbarButton _thumbnailToolbarSkip;
+
+        private System.Threading.Timer _notifyDoubleClickTimer;
+        private static Boolean _notifyDoubleClicked = false;
+        public static Player _player;
+        public static PlaylistPage _playlistPage;
+        public static HistoryPage _historyPage;
+        public static MainWindow _mainWindow;
+        private System.Windows.Controls.UserControl _prevPage;
+        private Search _searchPage;
+        private Settings _settingsPage;
+        private bool _showingError;
+        private string _startupStation = null;
+        private bool _stationLoaded;
+
+        private SearchMode _searchMode = SearchMode.NewStation;
+
+        private readonly bool _configError = false;
+
+        private bool _forceClose = false;
+
+        private StationList _stationPage;
+        private QuickMixPage _quickMixPage;
+        private UpdateCheck _update;
+        private UpdatePage _updatePage;
+        private RestartPage _restartPage;
+        private LastFMAuthPage _lastFMPage;
+
+        private ErrorCodes _lastError = ErrorCodes.SUCCESS;
+        private Exception _lastException = null;
+
+        private PandoraSharpScrobbler _scrobbler;
+
+        private bool _isActiveWindow;
+
+        private static DateTime lastTimeSkipped;
+
+        private WebInterface _webInterfaceObject;
+
+        private bool _restarting = false;
+
+        private const int PLAY = 1;
+        private const int PAUSE = 2;
+        private const int LIKE = 3;
+        private const int DISLIKE = 4;
+        private const int SKIP = 5;
+        #endregion
+        #region Release Data Values
+
+        private string _bassRegEmail = "";
+        private string _bassRegKey = "";
+
+        public string ConfigLocation
+        {
+            get { return _configLocation; }
+            set { _configLocation = value; }
+        }
+
+        public string StartupStation
+        {
+            get { return _startupStation; }
+            set { _startupStation = value; }
+        }
+
+        public void InitReleaseData()
+        {
+#if APP_RELEASE
+            _bassRegEmail = ReleaseData.BassRegEmail;
+            _bassRegKey = ReleaseData.BassRegKey;
+#endif
+        }
+
+        #endregion
+        public MainWindow()
+        {
+            InitializeComponent();
+
+            TitleBar.MouseLeftButtonDown += ((o, e) => DragMove());
+
+            _errorPage = new ErrorPage();
+            _errorPage.ErrorClose += _errorPage_ErrorClose;
+            //transitionControl.AddPage(_errorPage);
+
+            _loadingPage = new LoadingPage();
+            _libraryHome = CreateLibraryHome();
+            //transitionControl.AddPage(_loadingPage);
+
+            _update = new UpdateCheck();
+
+            ShowPage(_loadingPage);
+
+            _config = new Config(_configLocation ?? "");
+
+            if (!_config.LoadConfig())
+            {
+                _configError = true;
+            }
+            else
+            {
+                if (_config.Fields.Proxy_Address != string.Empty)
+                    PRequest.SetProxy(_config.Fields.Proxy_Address, _config.Fields.Proxy_Port,
+                        _config.Fields.Proxy_User, _config.Fields.Proxy_Password);
+                SwatchesProvider swatchesProvider = new SwatchesProvider();
+
+                Swatch color = swatchesProvider.Swatches.FirstOrDefault(a => a.Name == _config.Fields.Current_Color);
+                if(color != null) new PaletteHelper().ReplacePrimaryColor(color);
+                ThemeManager.Apply(_config.Fields.Appearance_Theme);
+                var loc = _config.Fields.HourNerdMusicPlayer_StartupLocation;
+                var size = _config.Fields.HourNerdMusicPlayer_StartupSize;
+
+                if (loc.X != -1 && loc.Y != -1)
+                {
+                    // Bug Fix: Issue #54, make sure that the initial window location is
+                    // always fully within the virtual screen bounds.
+                    // Unfortunately may not preserve window location when primary display is not left most
+                    // but it eliminates the missing window problem in most situations.
+                    this.Left = Math.Max(0, Math.Min(loc.X,
+                        SystemParameters.VirtualScreenWidth - this.ActualWidth));
+                    this.Top = Math.Max(0, Math.Min(loc.Y,
+                        SystemParameters.VirtualScreenHeight - this.ActualHeight));
+                }
+
+                if (size.Width != 0 && size.Height != 0)
+                {
+                    this.Width = size.Width;
+                    this.Height = size.Height;
+                }
+            }
+            
+            _mainWindow = this;
+        }
+
+
+        private UserControl _libraryHome;
+        private System.ComponentModel.ICollectionView _sidebarStations;
+        private bool _updatingSidebar;
+
+        private UserControl CreateLibraryHome()
+        {
+            var panel = new StackPanel { VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center, MaxWidth = 480 };
+            var title = new TextBlock { Text = "Your next soundtrack starts here.", FontSize = 30,
+                FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center };
+            title.SetResourceReference(TextBlock.ForegroundProperty, "HNText");
+            panel.Children.Add(title);
+            var caption = new TextBlock { Text = "Choose a station on the left and settle in.", FontSize = 16,
+                Margin = new Thickness(0, 20, 0, 0), TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center };
+            caption.SetResourceReference(TextBlock.ForegroundProperty, "HNSecondaryText");
+            panel.Children.Add(caption);
+            return new UserControl { Content = panel };
+        }
+
+        private void ShowLibraryHome()
+        {
+            RefreshSidebarStations();
+            ShowPage(_libraryHome);
+        }
+
+        private void Navigation_Click(object sender, RoutedEventArgs e)
+        {
+            _prevPage = CurrentPage;
+            var tag = (sender as System.Windows.Controls.Button).Tag as string;
+            if (tag == "tip") { TipDeveloper.Show(this); return; }
+            if (tag == "about") { ShowPage(_aboutPage); return; }
+            if (tag == "settings") { ShowPage(_settingsPage); return; }
+            if (_player == null || !_player.LoggedIn) return;
+            switch (tag)
+            {
+                case "playing":
+                    if (_player.CurrentSong != null) ShowPage(_playlistPage);
+                    break;
+                case "history": ShowPage(_historyPage); break;
+                case "stations": ShowStationList(); break;
+                case "add":
+                    _searchPage.SearchMode = SearchMode.NewStation;
+                    ShowPage(_searchPage);
+                    break;
+            }
+        }
+
+        private void RefreshSidebarStations()
+        {
+            this.BeginDispatch(() =>
+            {
+                _updatingSidebar = true;
+                try
+                {
+                    var stations = _player != null && _player.LoggedIn && _player.Stations != null ?
+                        _player.Stations.ToList() : new List<Station>();
+                    _sidebarStations = new System.Windows.Data.ListCollectionView(stations);
+                    _sidebarStations.Filter = item =>
+                    {
+                        var station = item as Station;
+                        return station != null && station.Name.IndexOf(SidebarSearch.Text.Trim(),
+                            StringComparison.OrdinalIgnoreCase) >= 0;
+                    };
+                    SidebarStationList.ItemsSource = _sidebarStations;
+                    SidebarStationList.SelectedItem = _player == null ? null : _player.CurrentStation;
+                    SidebarStationList.IsEnabled = _player != null && _player.LoggedIn;
+                    btnLogout.IsEnabled = _player != null && _player.LoggedIn;
+                    SidebarStationCount.Text = stations.Count.ToString();
+                    SidebarEmpty.Text = _player == null || !_player.LoggedIn ?
+                        "Sign in to see your stations." : "No matching stations.";
+                    SidebarEmpty.Visibility = _sidebarStations.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
+                    if (_player != null && _player.LoggedIn)
+                        SidebarStatus.Text = _player.CurrentStation == null ? "Ready to listen" : _player.CurrentStation.Name;
+                }
+                finally { _updatingSidebar = false; }
+            });
+        }
+
+        private void SidebarSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_sidebarStations == null) return;
+            _updatingSidebar = true;
+            try
+            {
+                _sidebarStations.Refresh();
+                SidebarStationList.SelectedItem = _player.CurrentStation;
+                SidebarEmpty.Visibility = _sidebarStations.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
+            }
+            finally { _updatingSidebar = false; }
+        }
+
+        private void SidebarStationList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_updatingSidebar || _player == null || !_player.LoggedIn) return;
+            var station = SidebarStationList.SelectedItem as Station;
+            if (station == null || (station == _player.CurrentStation && _player.Playing)) return;
+            SidebarStatus.Text = "Loading " + station.Name + "…";
+            PageHeading.Text = station.Name;
+            _player.PlayStation(station);
+        }
+
+        public static CommandLineOptions _clo;
+        public static void SetCommandLine(CommandLineOptions clo)
+        {
+            _clo = clo;
+        }
+
+        public void DoCommandLine()
+        {
+            if (_clo.SkipTrack)
+            {
+                SkipTrack(null, null);
+            }
+
+            if (_clo.TogglePlayPause)
+            {
+                PlayPauseToggled(null, null);
+            }
+
+            if (_clo.DoThumbsUp)
+            {
+                ExecuteThumbsUp(null, null);
+            }
+
+            if (_clo.DoThumbsDown)
+            {
+                ExecuteThumbsDown(null, null);
+            }
+
+            if (_clo.StationToLoad != null)
+            {
+                LoadStation(_clo.StationToLoad);
+            }
+
+            if (_clo.Exit)
+            {
+                _forceClose = true;
+                Close();
+            }
+        }
+
+        static void ShowHelp(OptionSet p)
+        {
+            Console.WriteLine("Usage: HourNerdMusicPlayer [OPTIONS]");
+            Console.WriteLine("Greet a list of individuals with an optional message.");
+            Console.WriteLine("If no message is specified, a generic greeting is used.");
+            Console.WriteLine();
+            Console.WriteLine("Options:");
+            p.WriteOptionDescriptions(Console.Out);
+        }
+
+        #region Setups
+
+        private void SetupLogging()
+        {
+            bool diagnostics = Environment.GetEnvironmentVariable("HOURNERDMUSICPLAYER_DIAGNOSTICS") == "1";
+            if (_config.Fields.Debug_WriteLog || diagnostics)
+            {
+                _loadingPage.UpdateStatus("Initializing logging...");
+                string logFilename = "hournerdmusicplayer{0}.log";
+                if (_config.Fields.Debug_Timestamp)
+                    logFilename = string.Format(logFilename, DateTime.Now.ToString("_MMdd-hhmmss"));
+                else
+                    logFilename = string.Format(logFilename, "");
+
+                string path = diagnostics ? Path.Combine(Config.HourNerdMusicPlayerAppData, "hournerdmusicplayer-diagnostics.log") :
+                    Path.Combine(_config.Fields.Debug_Logpath, logFilename);
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+
+                Log.SetLogPath(path);
+            }
+        }
+
+        private void CloseSettings()
+        {
+            _scrobbler.IsEnabled = _config.Fields.LastFM_Scrobble;
+            RestorePrevPage();
+        }
+
+        private void SetupPageEvents()
+        {
+            _settingsPage.Close += CloseSettings;
+            _settingsPage.Restart += _settingsPage_Restart;
+            _settingsPage.LastFMAuthRequest += _settingsPage_LastFMAuthRequest;
+            _settingsPage.LasFMDeAuthRequest += _settingsPage_LasFMDeAuthRequest;
+            _restartPage.RestartSelectionEvent += _restartPage_RestartSelectionEvent;
+            _lastFMPage.ContinueEvent += _lastFMPage_ContinueEvent;
+            _lastFMPage.CancelEvent += _lastFMPage_CancelEvent;
+            _aboutPage.Close += RestorePrevPage;
+
+            _searchPage.Cancel += _searchPage_Cancel;
+            _searchPage.AddVariety += _searchPage_AddVariety;
+            _loginPage.ConnectingEvent += _loginPage_ConnectingEvent;
+        }
+
+        void _settingsPage_LasFMDeAuthRequest()
+        {
+            _config.Fields.LastFM_SessionKey = string.Empty;
+            _config.Fields.LastFM_Scrobble = false;
+            _config.SaveConfig();
+        }
+
+        void _settingsPage_LastFMAuthRequest()
+        {
+            this.BeginDispatch(() =>
+            {
+                try
+                {
+                    string url = _scrobbler.GetAuthUrl();
+                    _lastFMPage.SetAuthURL(url);
+                    _scrobbler.LaunchAuthPage();
+
+                    ShowPage(_lastFMPage);
+                }
+                catch (Exception ex)
+                {
+                    ShowError(ErrorCodes.ERROR_GETTING_TOKEN, ex);
+                }
+            });
+        }
+
+        void _lastFMPage_CancelEvent()
+        {
+            ShowPage(_settingsPage);
+        }
+
+        void _lastFMPage_ContinueEvent()
+        {
+            this.Dispatch(() => GetLastFMSessionKey());
+        }
+
+        void _settingsPage_Restart()
+        {
+            ShowPage(_restartPage);
+        }
+
+        void DoRestart()
+        {
+
+            List<string> args = new List<string>();
+            var cmds = System.Environment.GetCommandLineArgs();
+            foreach (string a in cmds)
+                args.Add(a);
+
+            args.RemoveAt(0);
+            args.Remove("-restart");
+
+            string sArgs = string.Empty;
+            foreach (string s in args)
+                sArgs += (s + " ");
+
+            sArgs += " -restart";
+
+            Process.Start("HourNerdMusicPlayer.exe", sArgs);
+        }
+
+        void _restartPage_RestartSelectionEvent(bool status)
+        {
+            if (status)
+            {
+                _restarting = true;
+                DoRestart();
+                Close();
+            }
+            else
+            {
+                RestorePrevPage();
+            }
+        }
+
+        DateTime _lastFMStart;
+        bool _lastFMAuth = false;
+
+        private void DoLastFMAuth()
+        {
+            try
+            {
+                _lastFMStart = DateTime.Now;
+                while ((DateTime.Now - _lastFMStart).TotalMilliseconds < 5000) Thread.Sleep(10);
+
+                string sk = _scrobbler.GetAuthSessionKey();
+                _config.Fields.LastFM_Scrobble = true;
+                _config.Fields.LastFM_SessionKey = sk;
+                _config.SaveConfig();
+
+                DoLastFMSuccess();
+            }
+            catch (Exception ex)
+            {
+                _config.Fields.LastFM_Scrobble = false;
+                _config.Fields.LastFM_SessionKey = string.Empty;
+                _config.SaveConfig();
+
+                DoLastFMError(ex);
+            }
+        }
+
+        private void DoLastFMSuccess()
+        {
+            _lastFMStart = DateTime.Now;
+            this.BeginDispatch(() => _loadingPage.UpdateStatus("Success!"));
+            while ((DateTime.Now - _lastFMStart).TotalMilliseconds < 1500) Thread.Sleep(10);
+            this.BeginDispatch(() => ShowPage(_settingsPage));
+            _lastFMAuth = false;
+        }
+
+        private void DoLastFMError(Exception ex)
+        {
+            _lastFMStart = DateTime.Now;
+            this.BeginDispatch(() =>
+            {
+                _lastError = ErrorCodes.ERROR_GETTING_SESSION;
+                //ShowError(_lastError, ex);
+                _loadingPage.UpdateStatus("Error Fetching Last.FM Session");
+            });
+            while ((DateTime.Now - _lastFMStart).TotalMilliseconds < 3000) Thread.Sleep(10);
+            this.BeginDispatch(() => ShowPage(_settingsPage));
+            _lastFMAuth = false;
+        }
+
+        private void GetLastFMSessionKey()
+        {
+            _lastFMAuth = true;
+            _lastFMStart = DateTime.Now;
+            _loadingPage.UpdateStatus("Fetching Last.FM Session");
+            ShowPage(_loadingPage);
+
+            Task.Factory.StartNew(() => DoLastFMAuth());
+        }
+
+        private void SetupUIEvents()
+        {
+            _player.ConnectionEvent += _player_ConnectionEvent;
+            _player.LogoutEvent += _player_LogoutEvent;
+            _player.StationLoaded += _player_StationLoaded;
+            _player.StationsRefreshed += _player_StationsRefreshed;
+            _player.StationsRefreshing += _player_StationsRefreshing;
+            _player.ExceptionEvent += _player_ExceptionEvent;
+            _player.PlaybackStateChanged += _player_PlaybackStateChanged;
+            _player.LoginStatusEvent += _player_LoginStatusEvent;
+            _player.PlaybackStart += _player_PlaybackStart;
+            _player.StationCreated += _player_StationCreated;
+
+            mainBar.PlayPauseClick += mainBar_PlayPauseClick;
+            mainBar.NextClick += mainBar_NextClick;
+            mainBar.AboutClick += mainBar_AboutClick;
+            mainBar.SettingsClick += mainBar_SettingsClick;
+            mainBar.StationListClick += mainBar_stationPageClick;
+            mainBar.CreateStationClick += mainBar_searchPageClick;
+            mainBar.ErrorClicked += mainBar_ErrorClicked;
+            mainBar.VolumeChanged += mainBar_VolumeChanged;
+
+            _loginPage.Loaded += _loginPage_Loaded;
+            _aboutPage.Loaded += _aboutPage_Loaded;
+            _settingsPage.Loaded += _settingsPage_Loaded;
+            _settingsPage.Logout += _settingsPage_Logout;
+            _searchPage.Loaded += _searchPage_Loaded;
+            _stationPage.Loaded += _stationPage_Loaded;
+            _stationPage.EditQuickMixEvent += _stationPage_EditQuickMixEvent;
+            _stationPage.AddVarietyEvent += _stationPage_AddVarietyEvent;
+            _quickMixPage.CancelEvent += _quickMixPage_CancelEvent;
+            _quickMixPage.CloseEvent += _quickMixPage_CloseEvent;
+            _playlistPage.Loaded += _playlistPage_Loaded;
+        }
+
+        private void SetupPages()
+        {
+            _searchPage = new Search(_player);
+            //transitionControl.AddPage(_searchPage);
+
+            _settingsPage = new Settings(_player, _config, _keyHost);
+            //transitionControl.AddPage(_settingsPage);
+
+            _restartPage = new RestartPage();
+            //transitionControl.AddPage(_restartPage);
+
+            _aboutPage = new About();
+            //transitionControl.AddPage(_aboutPage);
+
+            _stationPage = new StationList(_player);
+            //transitionControl.AddPage(_stationPage);
+
+            _quickMixPage = new QuickMixPage(_player);
+            //transitionControl.AddPage(_quickMixPage);
+
+            _loginPage = new LoginPage(_player, _config);
+            //transitionControl.AddPage(_loginPage);
+
+            _historyPage = new HistoryPage(_player, _config);
+
+            _playlistPage = new PlaylistPage(_player, _config);
+            //transitionControl.AddPage(_playlistPage);
+
+            _lastFMPage = new LastFMAuthPage();
+            //transitionControl.AddPage(_lastFMPage);
+        }
+
+        private void StationMenuClick(object sender, EventArgs e)
+        {
+            var station = (Station)((ToolStripMenuItem)sender).Tag;
+            _player.PlayStation(station);
+        }
+
+        private void AddStationMenuItems()
+        {
+            if (_notify != null && _notifyMenu != null && _player.Stations.Count > 0)
+            {
+                _notifyMenu_Stations.DropDown.Items.Clear();
+                foreach (Station s in _player.Stations)
+                {
+                    var menu = new ToolStripMenuItem(s.Name);
+                    menu.Click += StationMenuClick;
+                    menu.Tag = s;
+                    _notifyMenu_Stations.DropDown.Items.Add(menu);
+                }
+            }
+        }
+
+        private void LoadNotifyDetailUrl(object sender, EventArgs e)
+        {
+            try
+            {
+                Process.Start((string)((ToolStripMenuItem)sender).Tag);
+            }
+            catch
+            {
+            }
+        }
+
+        private void LoadNotifyMenu()
+        {
+            var song = _player.CurrentSong;
+            bool showSongInfo = !_player.Stopped && song != null && _player.LoggedIn;
+            bool showStations = false;
+            if (_player.Stations != null)
+                showStations = _player.Stations.Count > 0;
+
+            _notifyMenu_Title.Visible =
+                _notifyMenu_Artist.Visible =
+                _notifyMenu_Album.Visible =
+                _notifyMenu_BreakSong.Visible =
+                _notifyMenu_DownVote.Visible =
+                _notifyMenu_UpVote.Visible =
+                _notifyMenu_Tired.Visible =
+                _notifyMenu_BreakVote.Visible = showSongInfo;
+
+            _notifyMenu_PlayPause.Enabled =
+                _notifyMenu_Next.Enabled = showSongInfo;
+
+            if (showSongInfo)
+            {
+                _notifyMenu_Title.Text = song.SongTitle.Replace("&", "&&&");
+                _notifyMenu_Title.Tag = song.SongDetailUrl;
+
+                _notifyMenu_Artist.Text = "by " + song.Artist.Replace("&", "&&&");
+                _notifyMenu_Artist.Tag = song.ArtistDetailUrl;
+
+                _notifyMenu_Album.Text = "on " + song.Album.Replace("&", "&&&");
+                _notifyMenu_Album.Tag = song.AlbumDetailUrl;
+
+                _notifyMenu_PlayPause.Text = _player.Playing ? "Pause" : "Play";
+                if (song.Banned)
+                {
+                    _notifyMenu_DownVote.Image = Properties.Resources.thumbs_down;
+                }
+                else
+                {
+                    _notifyMenu_DownVote.Image = null;
+                }
+                if (song.Loved)
+                {
+                    _notifyMenu_UpVote.Text = "Unlike Song";
+                    _notifyMenu_UpVote.Image = Properties.Resources.thumbs_up;
+                }
+                else
+                {
+                    _notifyMenu_UpVote.Text = "Like Song";
+                    _notifyMenu_UpVote.Image = null;
+                }
+            }
+
+            _notifyMenu_BreakStation.Visible =
+                _notifyMenu_Stations.Visible = showStations;
+
+            _notifyMenu_BreakExit.Visible = _notifyMenu_Exit.Visible = true;
+
+            if (showStations)
+                AddStationMenuItems();
+        }
+
+        private void SetupNotifyIcon()
+        {
+            _notifyMenu_Title = new ToolStripMenuItem("Title");
+            _notifyMenu_Title.Click += LoadNotifyDetailUrl;
+            _notifyMenu_Title.Image = Properties.Resources.menu_info;
+
+            _notifyMenu_Artist = new ToolStripMenuItem("Artist");
+            _notifyMenu_Artist.Click += LoadNotifyDetailUrl;
+            _notifyMenu_Artist.Image = Properties.Resources.menu_info;
+
+            _notifyMenu_Album = new ToolStripMenuItem("Album");
+            _notifyMenu_Album.Click += LoadNotifyDetailUrl;
+            _notifyMenu_Album.Image = Properties.Resources.menu_info;
+
+            _notifyMenu_PlayPause = new ToolStripMenuItem("Play");
+            _notifyMenu_PlayPause.Click += ((o, e) => _player.PlayPause());
+
+            _notifyMenu_Next = new ToolStripMenuItem("Next Song");
+            _notifyMenu_Next.Click += ((o, e) => _player.Next());
+
+            _notifyMenu_Stations = new ToolStripMenuItem("Stations");
+
+            _notifyMenu_DownVote = new ToolStripMenuItem("Dislike Song");
+            _notifyMenu_DownVote.Click += ((o, e) => _playlistPage.ThumbDownCurrent());
+
+            _notifyMenu_Tired = new ToolStripMenuItem("Tired of This Song");
+            _notifyMenu_Tired.Click += ((o, e) => _playlistPage.TiredOfCurrentSongFromSystemTray());
+
+            _notifyMenu_UpVote = new ToolStripMenuItem("Like Song");
+            _notifyMenu_UpVote.Click += ((o, e) => _playlistPage.ThumbUpCurrent());
+
+            _notifyMenu_Exit = new ToolStripMenuItem("Exit HourNerd Music Player");
+            _notifyMenu_Exit.Click += ((o, e) => { _forceClose = true; Close(); });
+
+            var menus = new ToolStripItem[]
+                            {
+                                _notifyMenu_Title,
+                                _notifyMenu_Artist,
+                                _notifyMenu_Album,
+                                _notifyMenu_BreakSong,
+                                _notifyMenu_PlayPause,
+                                _notifyMenu_Next,
+                                _notifyMenu_BreakVote,
+                                _notifyMenu_UpVote,
+                                _notifyMenu_DownVote,
+                                _notifyMenu_Tired,
+                                _notifyMenu_BreakStation,
+                                _notifyMenu_Stations,
+                                _notifyMenu_BreakExit,
+                                _notifyMenu_Exit
+                            };
+
+            _notifyMenu = new ContextMenuStrip();
+            _notifyMenu.Items.AddRange(menus);
+
+            _notify = new NotifyIcon()
+            {
+                Text = "HourNerd Music Player",
+                Icon = Properties.Resources.main_icon,
+                ContextMenuStrip = _notifyMenu,
+            };
+
+            // Timer is used to distinguish between mouse single and double clicks
+            _notifyDoubleClickTimer = new System.Threading.Timer(o =>
+            {
+                Thread.Sleep(SystemInformation.DoubleClickTime);
+                if (!_notifyDoubleClicked)
+                {
+                    _player.PlayPause();
+                }
+                _notifyDoubleClicked = false;
+            });
+
+            _notify.MouseDoubleClick += ((o, e) =>
+            {
+                // Only process left mouse button double clicks
+                if (e.Button != MouseButtons.Left)
+                {
+                    return;
+                }
+
+                _notifyDoubleClicked = true;
+
+                // Hide window if it is shown; show if it is hidden
+                if (WindowState == WindowState.Normal)
+                {
+                    WindowState = WindowState.Minimized;
+                    this.Hide();
+                    ShowInTaskbar = false;
+                }
+                else
+                {
+                    Microsoft.Shell.NativeMethods.ShowToFront((new WindowInteropHelper(this)).Handle);
+                }
+            });
+
+
+            _notify.MouseClick += ((o, e) =>
+            {
+                if (e.Button == MouseButtons.Left)
+                {
+                    // Play or pause only in the event of single click
+                    _notifyDoubleClickTimer.Change(0, 0);
+                }
+                else if (e.Button == MouseButtons.Middle)
+                {
+                    _player.Next();
+                }
+            });
+
+            _notify.ContextMenuStrip.Opening += ((o, e) => LoadNotifyMenu());
+
+            _notify.Visible = true;
+        }
+
+        private void SetupThumbnailToolbarButtons()
+        {
+            _thumbnailToolbarThumbUp = new ThumbnailToolbarButton(Properties.Resources.thumbs_up_icon, "Thumb Up");
+            _thumbnailToolbarThumbDown = new ThumbnailToolbarButton(Properties.Resources.thumbs_down_icon, "Thumb Down");
+            _thumbnailToolbarPlayPause = new ThumbnailToolbarButton(Properties.Resources.play_pause, "Play/Pause");
+            _thumbnailToolbarSkip = new ThumbnailToolbarButton(Properties.Resources.skip_song, "Skip");
+
+            TaskbarManager.Instance.ThumbnailToolbars.AddButtons((new WindowInteropHelper(this)).Handle, _thumbnailToolbarThumbUp, _thumbnailToolbarPlayPause, _thumbnailToolbarSkip, _thumbnailToolbarThumbDown);
+            _thumbnailToolbarThumbUp.Click += _thumbnailToolbarThumbUp_Click;
+            _thumbnailToolbarThumbDown.Click += _thumbnailToolbarThumbDown_Click;
+            _thumbnailToolbarPlayPause.Click += _thumbnailToolbarPlayPause_Click;
+            _thumbnailToolbarSkip.Click += _thumbnailToolbarSkip_Click;
+        }
+
+        private void _thumbnailToolbarSkip_Click(object sender, ThumbnailButtonClickedEventArgs e)
+        {
+            Next();
+        }
+
+        private void _thumbnailToolbarPlayPause_Click(object sender, ThumbnailButtonClickedEventArgs e)
+        {
+            PlayPauseToggle();
+        }
+
+        private void _thumbnailToolbarThumbDown_Click(object sender, ThumbnailButtonClickedEventArgs e)
+        {
+            Dislike();
+        }
+
+        private void _thumbnailToolbarThumbUp_Click(object sender, ThumbnailButtonClickedEventArgs e)
+        {
+            Like();
+        }
+
+        private bool InitLogic()
+        {
+            //while (CurrentPage != _loadingPage) Thread.Sleep(10);
+            _loadingPage.UpdateStatus("Loading configuration...");
+            InitReleaseData();
+
+            if (_configError)
+            {
+                this.BeginDispatch(() => ShowError(ErrorCodes.CONFIG_LOAD_ERROR, null));
+                return false;
+            }
+
+            try
+            {
+                SetupLogging();
+            }
+            catch (Exception ex)
+            {
+                ShowError(ErrorCodes.LOG_SETUP_ERROR, ex);
+                return false;
+            }
+            _initComplete = true;
+            return true;
+        }
+
+        private void FinalLoad()
+        {
+            Version ver = Assembly.GetEntryAssembly().GetName().Version;
+            if (_config.Fields.HourNerdMusicPlayer_Version == null || _config.Fields.HourNerdMusicPlayer_Version < ver)
+            {
+                _loadingPage.UpdateStatus("Running update logic...");
+
+                string oldVer = _config.Fields.HourNerdMusicPlayer_Version.ToString();
+
+                _config.Fields.HourNerdMusicPlayer_Version = ver;
+                _config.SaveConfig();
+
+#if APP_RELEASE
+                var post = new PostSubmitter(ReleaseData.AnalyticsPostURL);
+
+                post.Add("guid", _config.Fields.HourNerdMusicPlayer_InstallID);
+                post.Add("curver", oldVer);
+                post.Add("newver", _config.Fields.HourNerdMusicPlayer_Version.ToString());
+                post.Add("osver", SystemInfo.GetWindowsVersion());
+
+                try
+                {
+                    post.Send();
+                }
+                catch(Exception ex)
+                {
+                    Log.O(ex.ToString());
+                }
+#endif
+            }
+
+            _loadingPage.UpdateStatus("Loading audio engine...");
+            try
+            {
+                this.Dispatch(() =>
+                {
+                    _startupOverlay = new StartupOverlay(this);
+                    _startupOverlay.Show();
+                });
+                _player = new Player();
+                _player.Initialize(_bassRegEmail, _bassRegKey); //TODO - put this in the login sequence?
+                if (_config.Fields.Proxy_Address != string.Empty)
+                    _player.SetProxy(_config.Fields.Proxy_Address, _config.Fields.Proxy_Port,
+                        _config.Fields.Proxy_User, _config.Fields.Proxy_Password);
+                setOutputDevice(_config.Fields.System_OutputDevice);
+            }
+            catch (Exception ex)
+            {
+                ShowError(ErrorCodes.ENGINE_INIT_ERROR, ex);
+                return;
+            }
+            finally
+            {
+                this.BeginDispatch(() =>
+                {
+                    if (_startupOverlay != null) _startupOverlay.Complete();
+                });
+            }
+
+            LoadLastFM();
+
+            _player.AudioFormat = _config.Fields.Pandora_AudioFormat;
+            _player.SetStationSortOrder(_config.Fields.Pandora_StationSortOrder);
+            _player.Volume = _config.Fields.HourNerdMusicPlayer_Volume;
+            _player.PauseOnLock = _config.Fields.HourNerdMusicPlayer_PauseOnLock;
+            _player.MaxPlayed = _config.Fields.HourNerdMusicPlayer_MaxHistory;
+
+            //_player.ForceSSL = _config.Fields.Misc_ForceSSL;
+
+
+            _loadingPage.UpdateStatus("Setting up cache...");
+            string cachePath = Path.Combine(Config.HourNerdMusicPlayerAppData, "Cache");
+            if (!Directory.Exists(cachePath)) Directory.CreateDirectory(cachePath);
+            _player.ImageCachePath = cachePath;
+
+            _loadingPage.UpdateStatus("Starting Web Server...");
+
+            StartWebServer();
+
+            _loadingPage.UpdateStatus("Setting up UI...");
+
+            this.Dispatch(() => {
+                _keyHost = new HotKeyHost(this);
+                ConfigureHotKeys();
+            });
+
+            this.Dispatch(SetupJumpList);
+
+            this.Dispatch(SetupNotifyIcon);
+
+            this.Dispatch(() => mainBar.DataContext = _player); //To bind playstate
+
+            this.Dispatch(SetupPages);
+            this.Dispatch(SetupUIEvents);
+            this.Dispatch(SetupPageEvents);
+
+            this.Dispatch(SetupThumbnailToolbarButtons);
+
+            if (_config.Fields.Login_AutoLogin &&
+                (!string.IsNullOrEmpty(_config.Fields.Login_Email)) &&
+                (!string.IsNullOrEmpty(_config.Fields.Login_Password)))
+            {
+                _player.Connect(_config.Fields.Login_Email, _config.Fields.Login_Password);
+            }
+            else
+            {
+                ShowPage(_loginPage);
+            }
+
+            this.Dispatch(() => mainBar.Volume = _player.Volume);
+
+            _finalComplete = true;
+
+            if (CurrentPage == _loadingPage && _initComplete && !_finalComplete)
+                Task.Factory.StartNew(FinalLoad);
+        }
+
+        public void ShowPage(UserControl control)
+        {
+            this.Dispatch(() =>
+            {
+                if (control == null) return;
+                CurrentPage = control;
+                ContentGrid.RowDefinitions[2].Height = new GridLength(
+                    _player != null && _player.LoggedIn && _player.CurrentSong != null ? 75 : 0);
+                if (control == _playlistPage) PageHeading.Text = _player.CurrentStation == null ? "Now playing" : _player.CurrentStation.Name;
+                else if (control == _stationPage) PageHeading.Text = "Manage your stations";
+                else if (control == _historyPage) PageHeading.Text = "Recently played";
+                else if (control == _settingsPage) PageHeading.Text = "Settings";
+                else if (control == _aboutPage) PageHeading.Text = "About HourNerd Music Player";
+                else if (control == _loginPage) PageHeading.Text = "Welcome to your music";
+                else if (control == _searchPage) PageHeading.Text = "Discover a station";
+                else if (control == _libraryHome) PageHeading.Text = "Your library";
+                cntCtrl.Content = control;
+            });
+        }
+
+        private void setOutputDevice(string systemOutputDevice)
+        {
+            if (!systemOutputDevice.IsNullOrEmpty())
+            {
+                string prevOutput = _player.OutputDevice;
+                try
+                {
+                    _player.OutputDevice = systemOutputDevice;
+                }
+                catch (BassException bEx)
+                {
+                    _player.OutputDevice = prevOutput;
+                }
+
+            }
+        }
+
+        private void StartWebServer()
+        {
+            if (_config.Fields.HourNerdMusicPlayer_RemoteControlEnabled)
+            {
+                _webInterfaceObject = new WebInterface();
+                Thread webInterfaceThread = new Thread(new ThreadStart(_webInterfaceObject.StartInterface));
+                webInterfaceThread.Start();
+                lastTimeSkipped = DateTime.Now;
+            }
+        }
+
+        private void StopWebServer()
+        {
+            if (_config.Fields.HourNerdMusicPlayer_RemoteControlEnabled)
+            {
+                if (_webInterfaceObject != null)
+                {
+                    _webInterfaceObject.StopInterface();
+                }
+            }
+        }
+
+        public static bool Next()
+        {
+            if ((DateTime.Now - lastTimeSkipped).Seconds > 20)
+            {
+                System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
+                {
+                    _mainWindow.showBalloon(SKIP);
+                    _player.Next();
+                }));
+                lastTimeSkipped = DateTime.Now;
+                return true;
+            }
+            return false;
+        }
+        public static void Pause()
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
+            {
+                _mainWindow.showBalloon(PAUSE);
+                _player.Pause();
+            }));
+        }
+        public static void Play()
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
+            {
+                _mainWindow.showBalloon(PLAY);
+                _player.Play();
+            }));
+        }
+        public static void PlayPauseToggle()
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
+            {
+                if (_player.Paused)
+                {
+                    _mainWindow.showBalloon(PLAY);
+                }
+                if (_player.Playing)
+                {
+                    _mainWindow.showBalloon(PAUSE);
+                }
+                _player.PlayPause();
+            }));
+        }
+        public static void Like()
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
+            {
+                _mainWindow.showBalloon(LIKE);
+                _playlistPage.ThumbUpCurrent();
+            }));
+
+        }
+        public static void Dislike()
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
+            {
+                _mainWindow.showBalloon(DISLIKE);
+                _playlistPage.ThumbDownCurrent();
+            }));
+        }
+        public static Song GetCurrentSong()
+        {
+            return _player.CurrentSong;
+        }
+        private void LoadLastFM()
+        {
+            string apiKey = string.Empty;
+            string apiSecret = string.Empty;
+#if APP_RELEASE
+                apiKey = ReleaseData.LastFMApiKey;
+                apiSecret = ReleaseData.LastFMApiSecret;
+#else
+            //Put your own Last.FM API keys here
+            apiKey = "dummy_key";
+            apiSecret = "dummy_key";
+#endif
+
+            if (!string.IsNullOrEmpty(_config.Fields.LastFM_SessionKey))
+                _scrobbler = new PandoraSharpScrobbler(apiKey, apiSecret, _config.Fields.LastFM_SessionKey);
+            else
+                _scrobbler = new PandoraSharpScrobbler(apiKey, apiSecret);
+
+            _scrobbler.IsEnabled = _config.Fields.LastFM_Scrobble;
+#if APP_RELEASE
+#else
+            if (_config.Fields.LastFM_Scrobble && !_scrobbler.IsEnabled)
+            {
+                System.Windows.MessageBox.Show("You are trying to use Last.FM Scrobbler without a LastFM API key. " +
+                                               "In order to use it while in Debug mode, edit apiKey and apiSecret in LoadLastFM() in MainWindow.xaml.cs");
+            }
+#endif
+
+
+            // if (_config.Fields.Proxy_Address != string.Empty)
+                // _scrobbler.SetProxy(_config.Fields.Proxy_Address, _config.Fields.Proxy_Port,
+                //         _config.Fields.Proxy_User, _config.Fields.Proxy_Password);
+
+            _player.RegisterPlayerControlQuery(_scrobbler);
+        }
+
+        private void LoadLogic()
+        {
+            bool foundNewUpdate = false;
+            if (InitLogic())
+            {
+#if APP_RELEASE
+                _update = new UpdateCheck();
+                if (_config.Fields.HourNerdMusicPlayer_CheckUpdates)
+                {
+                    _loadingPage.UpdateStatus("Checking for updates...");
+                    if (_update.CheckForUpdate())
+                    {
+                        foundNewUpdate = true;
+                        this.BeginDispatch(() =>
+                                               {
+                                                   _updatePage = new UpdatePage(_update);
+                                                   _updatePage.UpdateSelectionEvent += _updatePage_UpdateSelectionEvent;
+                                                   //transitionControl.AddPage(_updatePage);
+                                                   ShowPage(_updatePage);
+                                               });
+                    }
+                }
+                if (_config.Fields.HourNerdMusicPlayer_CheckBetaUpdates && !foundNewUpdate)
+                {
+                    _loadingPage.UpdateStatus("Checking for Beta updates...");
+                    if (_update.CheckForBetaUpdate())
+                    {
+                        foundNewUpdate = true;
+                        this.BeginDispatch(() =>
+                        {
+                            _updatePage = new UpdatePage(_update);
+                            _updatePage.UpdateSelectionEvent += _updatePage_UpdateSelectionEvent;
+                            //transitionControl.AddPage(_updatePage);
+                            ShowPage(_updatePage);
+                        });
+                    }
+                }
+                if (_config.Fields.HourNerdMusicPlayer_CheckBetaUpdates || _config.Fields.HourNerdMusicPlayer_CheckUpdates)
+                {
+                    if (!foundNewUpdate)
+                    {
+                        FinalLoad();
+                    }
+                }
+                else
+                {
+                    FinalLoad();
+                }
+#else
+                FinalLoad();
+#endif
+            }
+        }
+
+        #endregion
+
+        #region Misc Methods
+        private bool IsOnPlaylist()
+        {
+            return (IsActive && CurrentPage == _playlistPage);
+        }
+
+        private void SetupJumpList()
+        {
+            System.Windows.Shell.JumpList jumpList = new System.Windows.Shell.JumpList();
+            jumpList.ShowRecentCategory = true;
+            System.Windows.Shell.JumpList.SetJumpList(System.Windows.Application.Current, jumpList);
+
+            JumpTask pause = JumpListManager.createJumpTask(PlayerCommands.PlayPause, "--playpause", 1);
+            jumpList.JumpItems.Add(pause);
+
+            JumpTask next = JumpListManager.createJumpTask(PlayerCommands.Next, "--next", 2);
+            jumpList.JumpItems.Add(next);
+
+            JumpTask thumbsUp = JumpListManager.createJumpTask(PlayerCommands.ThumbsUp, "--thumbsup", 3);
+            jumpList.JumpItems.Add(thumbsUp);
+
+            JumpTask thumbsDown = JumpListManager.createJumpTask(PlayerCommands.ThumbsDown, "--thumbsdown", 4);
+            jumpList.JumpItems.Add(thumbsDown);
+
+            JumpTask exitHourNerdMusicPlayer = JumpListManager.createJumpTask("Exit HourNerd Music Player", "Exits HourNerd Music Player", "--exit", 0);
+            jumpList.JumpItems.Add(exitHourNerdMusicPlayer);
+
+            jumpList.Apply();
+        }
+
+
+        private void ConfigureHotKeys()
+        {
+
+            foreach (HotKey h in _config.Fields.HourNerdMusicPlayer_HotKeys.Values)
+            {
+                _keyHost.AddHotKey(h);
+            }
+            if (new List<HotKey>(_config.Fields.HourNerdMusicPlayer_HotKeys.Values).Count == 0)
+            {
+                _keyHost.AddHotKey(new HotKey(PlayerCommands.PlayPause, Key.MediaPlayPause, ModifierKeys.None, true, true));
+
+                _keyHost.AddHotKey(new HotKey(PlayerCommands.Next, Key.MediaNextTrack, ModifierKeys.None, true, true));
+
+                _keyHost.AddHotKey(new HotKey(PlayerCommands.ThumbsUp, Key.MediaPlayPause, ModifierKeys.Control, true, true));
+
+                _keyHost.AddHotKey(new HotKey(PlayerCommands.ThumbsDown, Key.MediaStop, ModifierKeys.Control, true, true));
+            }
+
+            Dictionary<int, HotkeyConfig> keys = new Dictionary<int, HotkeyConfig>();
+            foreach (KeyValuePair<int, HotKey> pair in _keyHost.HotKeys)
+            {
+                keys.Add(pair.Key, new HotkeyConfig(pair.Value));
+            }
+            _config.Fields.HourNerdMusicPlayer_HotKeys = keys;
+
+            _config.SaveConfig();
+        }
+
+        public void ShowStationList()
+        {
+            _stationPage.Stations = _player.Stations;
+            ShowPage(_stationPage);
+        }
+
+        private void RestorePrevPage()
+        {
+            ShowPage(_prevPage);
+            _prevPage = null;
+        }
+
+        private void ShowErrorPage(ErrorCodes code, Exception ex)
+        {
+            if (!_showingError)
+            {
+                _showingError = true;
+
+                _prevPage = CurrentPage;
+                _errorPage.SetError(Errors.GetErrorMessage(code), Errors.IsHardFail(code), ex);
+                ShowPage(_errorPage);
+            }
+        }
+
+        private void ShowError(ErrorCodes code, Exception ex, bool showLast = false)
+        {
+            if (CurrentPage != _errorPage)
+            {
+                if (showLast && _lastError != ErrorCodes.SUCCESS)
+                {
+                    ShowErrorPage(_lastError, _lastException);
+                }
+                else if (code != ErrorCodes.SUCCESS && ex != null)
+                {
+                    if (Errors.IsHardFail(code))
+                    {
+                        ShowErrorPage(code, ex);
+                    }
+                    else
+                    {
+                        _lastError = code;
+                        _lastException = ex;
+                        mainBar.ShowError(Errors.GetErrorMessage(code));
+
+                        if (CurrentPage == _loadingPage && !_lastFMAuth)
+                        {
+                            _loginPage.LoginFailed = true;
+                            ShowPage(_loginPage);
+                        }
+                    }
+                }
+            }
+        }
+        #endregion
+
+        protected override void OnActivated(EventArgs e)
+        {
+            _isActiveWindow = true;
+            base.OnActivated(e);
+        }
+
+        protected override void OnDeactivated(EventArgs e)
+        {
+            _isActiveWindow = false;
+            base.OnDeactivated(e);
+        }
+
+        #region Event Handlers
+
+        void mainBar_ErrorClicked()
+        {
+            ShowError(ErrorCodes.SUCCESS, null, true);
+        }
+
+        private void _player_StationsRefreshing(object sender)
+        {
+            _stationPage.SetStationsRefreshing();
+        }
+
+        private void _loginPage_ConnectingEvent()
+        {
+            this.BeginDispatch(() => ShowPage(_loadingPage));
+        }
+
+        private void _errorPage_ErrorClose(bool hardFail)
+        {
+            if (hardFail || _prevPage == null)
+                Close();
+            else
+            {
+                _lastError = ErrorCodes.SUCCESS;
+                _lastException = null;
+                RestorePrevPage();
+                _showingError = false;
+            }
+        }
+
+        private void _updatePage_UpdateSelectionEvent(bool status)
+        {
+            if (status && _update.DownloadUrl != string.Empty)
+            {
+                //Process.Start(_update.DownloadUrl);
+                _forceClose = true;
+                Close();
+            }
+            else
+            {
+                ShowPage(_loadingPage);
+            }
+        }
+
+        private void _player_StationCreated(object sender, Station station)
+        {
+            _player.RefreshStations();
+            this.BeginDispatch(() => _player.PlayStation(station));
+            ShowPage(_playlistPage);
+        }
+
+        private void _searchPage_Cancel(object sender)
+        {
+            this.BeginDispatch(() =>
+            {
+                if (_searchMode == SearchMode.AddVariety)
+                    ShowStationList();
+                else
+                {
+                    if (_prevPage == _stationPage)
+                        ShowStationList();
+                    else
+                        RestorePrevPage();
+                    //ShowPage(_playlistPage);
+                }
+            });
+        }
+
+        void _searchPage_AddVariety(object sender)
+        {
+            ShowStationList();
+        }
+
+        private void _player_PlaybackStart(object sender, double duration)
+        {
+            this.BeginDispatch(() =>
+            {
+                showBalloon(PLAY, 5000);
+            });
+        }
+
+        private void _player_PlaybackStateChanged(object sender, BassAudioEngine.PlayState oldState,
+                                                  BassAudioEngine.PlayState newState)
+        {
+            this.BeginDispatch(() =>
+            {
+                if (newState == BassAudioEngine.PlayState.Playing)
+                {
+                    var song = _player.CurrentSong;
+                    if (song == null || !_player.LoggedIn) return;
+                    string title = "HourNerd Music Player | " + song.Artist + " / " + song.SongTitle;
+
+                    _notify.Text = title.Replace("&", "&&&").StringEllipses(63);
+                    //notify text cannot be more than 63 chars
+                    Title = title;
+                }
+                else if (newState == BassAudioEngine.PlayState.Paused)
+                {
+                    Title = _notify.Text = "HourNerd Music Player";
+                }
+                else if (newState == BassAudioEngine.PlayState.Stopped)
+                {
+                    mainBar.SetPlaying(false);
+                    Title = _notify.Text = "HourNerd Music Player";
+                    if (_player.LoggedIn)
+                        ShowStationList();
+                }
+            });
+        }
+
+        private void _player_ExceptionEvent(object sender, ErrorCodes code, Exception ex)
+        {
+            this.BeginDispatch(() => ShowError(code, ex));
+        }
+
+        private void _player_LoginStatusEvent(object sender, string status)
+        {
+            _loadingPage.UpdateStatus(status);
+        }
+
+        void _stationPage_EditQuickMixEvent()
+        {
+            ShowPage(_quickMixPage);
+        }
+
+        void _stationPage_AddVarietyEvent(Station station)
+        {
+            _searchPage.SearchMode = _searchMode = SearchMode.AddVariety;
+            _searchPage.VarietyStation = station;
+            ShowPage(_searchPage);
+        }
+
+        void _quickMixPage_CloseEvent()
+        {
+            ShowStationList();
+        }
+
+        void _quickMixPage_CancelEvent()
+        {
+            ShowStationList();
+        }
+
+        private void _playlistPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            Log.O("Show Playlist");
+            mainBar.SetModePlayList();
+        }
+
+        private void _stationPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            Log.O("Show Stations");
+            mainBar.SetModeStationList(_player.CurrentStation != null);
+        }
+
+        private void _searchPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            Log.O("Show Search");
+            mainBar.SetModeSearch();
+        }
+
+        private void btnLogout_Click(object sender, RoutedEventArgs e)
+        {
+            _settingsPage_Logout();
+        }
+
+        void _settingsPage_Logout()
+        {
+            if (!_player.LoggedIn) return;
+            // Clear saved credentials BEFORE the login page can auto-login again.
+            _config.Fields.Login_Email = string.Empty;
+            _config.Fields.Login_Password = string.Empty;
+            _config.SaveConfig();
+            _loginPage.LoginFailed = false;
+            // The local logged-in flag is cleared synchronously by Player.Logout.
+            // Its pending network-session cleanup runs separately.
+            _player.Logout();
+        }
+
+        private void _settingsPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            Log.O("Show Settings");
+            mainBar.SetModeSettings();
+        }
+
+        private void _aboutPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            Log.O("Show About");
+            mainBar.SetModeAbout();
+        }
+
+        private void _loginPage_Loaded(object sender, RoutedEventArgs e)
+        {
+            Log.O("Show Login");
+            mainBar.SetModeLogin();
+        }
+
+        private void mainBar_stationPageClick()
+        {
+            //_prevPage = CurrentPage;
+            if (CurrentPage == _stationPage || CurrentPage == _quickMixPage)
+            {
+                if (_stationLoaded)
+                    ShowPage(_playlistPage);
+            }
+            else
+            {
+                ShowPage(_stationPage);
+            }
+        }
+
+        private void mainBar_searchPageClick()
+        {
+            _prevPage = CurrentPage;
+            _searchPage.SearchMode = _searchMode = SearchMode.NewStation;
+            ShowPage(_searchPage);
+        }
+
+        private void mainBar_VolumeChanged(double vol)
+        {
+            _player.Volume = (int)vol;
+        }
+
+        private void mainBar_SettingsClick()
+        {
+            if (_prevPage == null)
+                _prevPage = CurrentPage;
+
+            if (CurrentPage == _settingsPage)
+                RestorePrevPage();
+            else
+                ShowPage(_settingsPage);
+        }
+
+        private void mainBar_AboutClick()
+        {
+            if (_prevPage == null)
+                _prevPage = CurrentPage;
+
+            if (CurrentPage == _aboutPage)
+                RestorePrevPage();
+            else
+                ShowPage(_aboutPage);
+        }
+
+        private void _player_StationsRefreshed(object sender)
+        {
+            _stationPage.Stations = _player.Stations;
+            RefreshSidebarStations();
+        }
+
+        private void mainBar_NextClick()
+        {
+            //if (CurrentPage == _playlistPage)
+            _player.Next();
+
+            ShowPage(_playlistPage);
+        }
+
+        private void mainBar_PlayPauseClick()
+        {
+            //if (CurrentPage == _playlistPage)
+            _player.PlayPause();
+
+            ShowPage(_playlistPage);
+        }
+
+        private void _player_StationLoaded(object sender, Station station)
+        {
+            this.BeginDispatch(() =>
+            {
+                if (!_player.LoggedIn || _player.CurrentStation != station) return;
+                mainBar.SetModePlayList();
+                ShowPage(_playlistPage);
+                ContentGrid.RowDefinitions[2].Height = new GridLength(75);
+                if (_config.Fields.Pandora_AutoPlay)
+                {
+                    _config.Fields.Pandora_LastStationID = station.ID;
+                    _config.SaveConfig();
+                }
+
+                _stationLoaded = true;
+                SidebarStatus.Text = station.Name;
+                _updatingSidebar = true;
+                SidebarStationList.SelectedItem = station;
+                _updatingSidebar = false;
+            }
+                );
+        }
+
+        void _player_LogoutEvent(object sender)
+        {
+            this.BeginDispatch(() =>
+            {
+                _stationLoaded = false;
+                SidebarStatus.Text = "Not signed in";
+                RefreshSidebarStations();
+                ShowPage(_loginPage);
+            });
+        }
+
+        private void _player_ConnectionEvent(object sender, bool state, ErrorCodes code)
+        {
+            RefreshSidebarStations();
+            if (state)
+            {
+                if (_config.Fields.Pandora_AutoPlay)
+                {
+                    Station s = null;
+                    if (StartupStation != null)
+                        s = _player.GetStationFromString(StartupStation);
+                    if (s == null)
+                    {
+                        s = _player.GetStationFromID(_config.Fields.Pandora_LastStationID);
+                    }
+                    if (s != null)
+                    {
+                        _loadingPage.UpdateStatus("Loading Station:" + Environment.NewLine + s.Name);
+                        _player.PlayStation(s);
+                    }
+                    else
+                    {
+                        ShowLibraryHome();
+                    }
+                }
+                else
+                {
+                    this.BeginDispatch(ShowLibraryHome);
+                }
+            }
+            else
+            {
+                ShowPage(_loginPage);
+            }
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            Task.Factory.StartNew(LoadLogic);
+        }
+
+        private void transitionControl_CurrentPageSet(UserControl page)
+        {
+            if (page == _loadingPage && _initComplete && !_finalComplete)
+                Task.Factory.StartNew(FinalLoad);
+        }
+
+        private void Window_Closing(object sender, CancelEventArgs e)
+        {
+            if (!_forceClose && _config.Fields.HourNerdMusicPlayer_MinimizeToTray && !_restarting)
+            {
+                WindowState = WindowState.Minimized;
+                this.Hide();
+                ShowInTaskbar = false;
+
+                e.Cancel = true;
+                return;
+            }
+
+            if (_notify != null)
+            {
+                _notify.Dispose();
+                _notify = null;
+            }
+
+            if (_config != null)
+            {
+                _config.Fields.HourNerdMusicPlayer_StartupLocation = new Point(this.Left, this.Top);
+                _config.Fields.HourNerdMusicPlayer_StartupSize = new Size(this.Width, this.Height);
+                if (_player != null)
+                    _config.Fields.HourNerdMusicPlayer_Volume = _player.Volume;
+                _config.SaveConfig();
+            }
+            StopWebServer();
+        }
+
+        private void Window_StateChanged(object sender, EventArgs e)
+        {
+            if (WindowState == WindowState.Minimized && _config.Fields.HourNerdMusicPlayer_MinimizeToTray)
+            {
+                this.Hide();
+                ShowInTaskbar = false;
+            }
+            else
+            {
+                this.Show();
+                ShowInTaskbar = true;
+            }
+        }
+
+        public void LoadStation(string station)
+        {
+            Station s = _player.GetStationFromString(station);
+            if (s != null)
+            {
+                _player.PlayStation(s);
+            }
+        }
+
+        public void PlayPauseToggled(object sender, ExecutedRoutedEventArgs e)
+        {
+            //this is inverse because of being applied before action is taken
+            if (!_player.Paused)
+            {
+                showBalloon(PAUSE);
+            }
+            else
+            {
+                showBalloon(PLAY);
+            }
+            _player.PlayPause();
+        }
+
+        public void SkipTrack(object sender, ExecutedRoutedEventArgs e)
+        {
+            showBalloon(SKIP);
+            _player.Next();
+        }
+
+        private void showBalloon(int option, int duration = 3000)
+        {
+            var song = _player.CurrentSong;
+            if (song == null || !_player.LoggedIn) return;
+            if (_config.Fields.HourNerdMusicPlayer_ShowTrayNotifications)
+            {
+                if (WindowState == System.Windows.WindowState.Minimized)
+                {
+                    switch (option)
+                    {
+                        case PLAY:
+                            {
+                                string tipText = song.SongTitle;
+                                _notify.BalloonTipTitle = "Playing: " + tipText;
+                                _notify.BalloonTipText = " by " + song.Artist;
+                                break;
+                            }
+                        case PAUSE:
+                            {
+                                _notify.BalloonTipTitle = "Paused";
+                                _notify.BalloonTipText = " ";
+                                break;
+                            }
+                        case LIKE:
+                            {
+                                //this is inverse because of being applied before action is taken
+                                if (!song.Loved)
+                                    _notify.BalloonTipTitle = "Song Liked";
+                                else
+                                    _notify.BalloonTipTitle = "Song Unliked";
+                                _notify.BalloonTipText = " ";
+                                break;
+                            }
+                        case DISLIKE:
+                            {
+                                _notify.BalloonTipTitle = "Song Disliked";
+                                _notify.BalloonTipText = " ";
+                                break;
+                            }
+                        case SKIP:
+                            {
+                                _notify.BalloonTipTitle = "Song Skipped";
+                                _notify.BalloonTipText = " ";
+                                break;
+                            }
+                        default:
+                            {
+                                return;
+                            }
+                    }
+                    _notify.ShowBalloonTip(3000);
+                }
+            }
+        }
+
+        private void CanExecutePlayPauseSkip(object sender, CanExecuteRoutedEventArgs e)
+        {
+            if (!_isActiveWindow)
+            {
+                e.CanExecute = true;
+            }
+            else
+            {
+                if (IsOnPlaylist())
+                {
+                    e.CanExecute = true;
+                }
+                else
+                {
+                    e.CanExecute = false;
+                }
+            }
+        }
+
+        public void ExecuteThumbsUp(object sender, ExecutedRoutedEventArgs e)
+        {
+            showBalloon(LIKE);
+            _playlistPage.ThumbUpCurrent();
+        }
+
+
+        public void ExecuteThumbsDown(object sender, ExecutedRoutedEventArgs e)
+        {
+            showBalloon(DISLIKE);
+            _playlistPage.ThumbDownCurrent();
+        }
+
+        private void CanExecuteThumbsUpDown(object sender, CanExecuteRoutedEventArgs e)
+        {
+            if (!_isActiveWindow && _player.CurrentSong != null)
+            {
+                e.CanExecute = true;
+            }
+            else
+            {
+                if (IsOnPlaylist() && _player.CurrentSong != null)
+                {
+                    e.CanExecute = true;
+                }
+                else
+                {
+                    e.CanExecute = false;
+                }
+            }
+        }
+
+
+        #endregion
+
+        private void MinimizeButton_Click(object sender, EventArgs e) => WindowState = WindowState.Minimized;
+
+        private void CloseButton_Click(object sender, EventArgs e) => Close();
+    }
+}

@@ -1,0 +1,30 @@
+﻿<UserControl x:Class="HourNerdMusicPlayer.About"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:GUI.Converters"
+             Foreground="{DynamicResource HNText}" FontFamily="Segoe UI" FontSize="14">
+    <UserControl.Resources><converters:AssemblyVersionConverter x:Key="assemblyVersion" /></UserControl.Resources>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="28,24" MaxWidth="620" HorizontalAlignment="Left">
+            <Border Background="{DynamicResource HNAccent}" CornerRadius="15" Width="62" Height="62" HorizontalAlignment="Left" Margin="0,0,0,20">
+                <TextBlock Text="HN" FontSize="25" FontWeight="Bold" Foreground="{DynamicResource HNAccentForeground}" VerticalAlignment="Center" HorizontalAlignment="Center" />
+            </Border>
+            <TextBlock Text="HourNerd Music Player" FontSize="30" FontWeight="Bold" TextWrapping="Wrap" Foreground="{DynamicResource HNText}" />
+            <TextBlock Margin="0,8,0,24" Foreground="{DynamicResource HNSecondaryText}"><Run Text="Version " /><Run Text="{Binding ., Converter={StaticResource assemblyVersion}}" /></TextBlock>
+            <TextBlock Text="Rebuilt and maintained by Chris Dahlkvist" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource HNAccentText}" />
+            <TextBlock Text="HourNerd · 2026" Foreground="{DynamicResource HNSecondaryText}" Margin="0,7,0,24" />
+            <TextBlock Text="CONTRIBUTORS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource HNMutedText}" Margin="0,0,0,10" />
+            <TextBlock Text="Chris Dahlkvist — Project lead and maintainer" TextWrapping="Wrap" Margin="0,0,0,7" />
+            <TextBlock Text="Alex “Signal” — Development contributor" TextWrapping="Wrap" Margin="0,0,0,25" />
+            <Border Height="1" Background="{DynamicResource HNBorder}" Margin="0,0,0,23" />
+            <TextBlock Text="BUILT ON ELPIS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource HNMutedText}" Margin="0,0,0,10" />
+            <TextBlock Text="Based on Elpis, originally created by Adam Haile. Original contributions by Alexey Seliverstov, ƝƠƇƬƲƦƝƛԼ, and the Elpis community are gratefully acknowledged." TextWrapping="Wrap" LineHeight="23" />
+            <TextBlock Text="Original copyright notices are retained in the source. Modifications © 2026 Chris Dahlkvist. Distributed under the GNU General Public License, version 3 or later; bundled libraries retain their respective notices and terms." TextWrapping="Wrap" Foreground="{DynamicResource HNSecondaryText}" LineHeight="22" Margin="0,14,0,15" />
+            <TextBlock Margin="0,0,0,12"><Hyperlink NavigateUri="https://github.com/adammhaile/Elpis" RequestNavigate="RequestNavigate" Foreground="{DynamicResource HNAccentText}">Original Elpis source and credits</Hyperlink></TextBlock>
+            <TextBlock><Hyperlink NavigateUri="https://www.gnu.org/licenses/gpl-3.0.html" RequestNavigate="RequestNavigate" Foreground="{DynamicResource HNAccentText}">GNU General Public License</Hyperlink></TextBlock>
+            <TextBlock Text="Audio technology: BASS by Un4seen Developments and BASS.NET by radio42." TextWrapping="Wrap" Foreground="{DynamicResource HNSecondaryText}" Margin="0,20,0,0" />
+            <Button Content="Tip the Developer" Click="TipDeveloper_Click" HorizontalAlignment="Left" Padding="16,10" Margin="0,20,0,0" />
+            <TextBlock Text="An independent Pandora client. Not affiliated with or endorsed by Pandora." TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource HNMutedText}" Margin="0,24,0,10" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

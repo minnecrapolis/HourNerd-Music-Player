@@ -1,0 +1,53 @@
+﻿PANDORA CONNECTION SETUP (REQUIRED)
+Public builds do not contain Pandora partner connection settings. Obtain one
+separately from your integration provider or administrator. It is not your
+personal Pandora password. After installation, open Pandora connection setup
+on the sign-in page, enter all three supplied values and save them. Windows encrypts it
+for your current Windows account on this computer. Then sign in normally with
+your personal Pandora email and password. Without a partner connection value,
+the installed application cannot sign in or play music.
+
+PREFERRED: SINGLE SETUP.EXE
+
+See START-HERE.txt. Install Inno Setup 6 on the build machine once, then run
+Build-Windows-Installer.ps1 to create dist\HourNerd-Music-Player-1.1.3-Setup.exe.
+Recipients need only the resulting EXE. It includes a normal installation wizard
+and uninstaller; no scripts or source project are needed on their computers.
+
+The script installer below remains a fallback for local use. Both installers
+use a dedicated per-user working folder rather than the project/install folder.
+
+ADD HOURNERD MUSIC PLAYER TO WINDOWS PROGRAMS
+
+No rebuild is needed if your existing version already runs.
+
+1. Copy Install-HourNerdMusicPlayer.ps1 and Install-HourNerdMusicPlayer.cmd
+   into your existing Elpis-Rebuild / HourNerdMusicPlayer project root (beside
+   Build-HourNerdMusicPlayer.ps1), or beside HourNerdMusicPlayer.exe in an
+   extracted Windows distribution.
+2. Close HourNerd Music Player, including its tray icon.
+3. Double-click Install-HourNerdMusicPlayer.cmd.
+4. Reopen Settings > Apps > Installed apps, or Control Panel > Programs and
+   Features. Search for HourNerd Music Player. It also appears in Start.
+5. Launch it with the new Start menu or desktop shortcut from now on.
+
+PowerShell alternative, from the project folder:
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-HourNerdMusicPlayer.ps1
+
+For a different EXE folder:
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-HourNerdMusicPlayer.ps1 -SourceDirectory "E:\path\to\folder-containing-exe"
+
+Installs under %LOCALAPPDATA%\Programs\HourNerd Music Player for the current
+Windows account. No administrator privileges required. Existing account and
+theme settings remain in their existing per-user profile. The installer
+preserves public-distribution.flag when installing a public package.
+
+Run the installer again from each new build or distribution to update the
+installed copy. Publishing now includes these installer files automatically.
+
+Uninstall through Windows Installed Apps. Only tracked installed application
+files are removed; saved accounts/settings and your original source or ZIP
+extraction folder are preserved.
+
+This fixes Windows installation/registration only; Spotify integration is
+still in progress and is not added by this update.

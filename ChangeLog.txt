@@ -1,0 +1,29 @@
+HourNerd Music Player 1.1.0 — 2026-11-15
+
+- Public distribution builder creates a standalone Windows runtime ZIP after
+  build/tests. Uses an explicit runtime list, excludes user state and symbols,
+  remaps source paths and rejects current developer path leakage in binaries.
+- Public marker disables legacy/development profile import and selects a
+  separate per-user Public profile. Remote control defaults off in public mode.
+- Four live, persistent themes: Dark, Light, Midnight and Forest.
+- Optional tipping panel with the requested Zelle email, Copy and official bank
+  finder. Direct pay URL remains disabled pending a bank-generated recipient link.
+- Stop writing full profile contents into diagnostics.
+- Corresponding source, author credits and available license notices included.
+
+HourNerd Music Player 1.0.0 — 2026-11-15
+
+- Rebranded as HourNerd Music Player, maintained by Chris Dahlkvist / HourNerd.
+- Added Alex "Signal" as development contributor.
+- Credited original Elpis creator Adam Haile and original contributors in About,
+  AUTHORS.md, README and retained source notices.
+- Replaced the drawer with a permanent, searchable station sidebar.
+- Added a visible active-station highlight, station count and loading status.
+- Kept station management, creation, history, settings and logout accessible.
+- Updated title, executable metadata, source namespaces/resource URIs, build
+  scripts, diagnostics and application icon.
+- Added one-time legacy profile copying without overwriting source or destination.
+- Retained the verified Rebuild 0.3 API/playback/logout repairs.
+- Added a profile preservation regression test (18 tests total).
+
+Earlier original release history is retained in upstream/Elpis-ChangeLog.txt.

@@ -1,0 +1,15 @@
+HourNerd Music Player includes original Elpis code and bundled components.
+Original source copyright notices are preserved in SOURCE.zip. The application
+license is provided in LICENSE, and original-author credits are in AUTHORS.md.
+
+Components include:
+- PandoraSharp, PandoraSharpPlayer and the original audio integration.
+- BASS, BASS AAC and BASS.NET audio libraries, under their respective upstream terms.
+- Newtonsoft.Json.
+- MahApps.Metro, ControlzEx, MaterialDesignThemes, MaterialDesignColors and FontAwesome.WPF.
+- Microsoft Windows API Code Pack.
+- LPFM Last.fm Scrobbler, Kayak and HttpMachine.
+
+Available license and notice files from the source and restored packages are
+included under ThirdParty. These notices do not change the components' terms.
+Original project: https://github.com/adammhaile/Elpis

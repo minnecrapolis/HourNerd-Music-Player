@@ -1,0 +1,35 @@
+GITHUB RELEASE PUBLICATION
+
+Upload the contents of this project folder to a repository you own, preserving
+.github/workflows/windows-release.yml at the repository root. Keep LICENSE and
+original source notices. Never upload your AppData, private ReleaseData.cs,
+local secret files, logs or personal account settings.
+
+The Windows release workflow builds on GitHub's windows-2022 runner using
+Visual Studio/MSBuild and Inno Setup 6 supplied by the runner. No personal
+Windows machine or stored account credentials are required by the workflow.
+It builds the public application, runs API regressions, builds both EXE and
+native MSI, verifies the MSI's extracted files, and prepares source/checksums.
+
+BUILD ONLY
+In Actions, run 'Windows installers and release' with tag v1.1.3 and Publish
+unchecked. Successful runs retain installers as downloadable workflow artifacts.
+The MSI builder is new; inspect the first Windows run before public release.
+
+PUBLISH
+Once Windows checks succeed, run the workflow with Publish checked, or push a
+tag matching the application version. A successful run creates a public GitHub
+prerelease with these assets:
+  HourNerd-Music-Player-1.1.3-Setup.exe
+  HourNerd-Music-Player-1.1.3-Setup.msi
+  HourNerd-Music-Player-1.1.3-Source.zip
+  SHA256SUMS.txt
+
+The automatically supplied GITHUB_TOKEN handles publication; no token is
+stored in source. An existing release with the same tag is not overwritten.
+The workflow validates that the requested tag matches the application version.
+Release notes are in installer/RELEASE-NOTES.md. The first release remains a
+prerelease because the reported station-switch crash is not confirmed resolved.
+
+No repository has been created or release published merely by preparing these
+files. Publication needs authenticated access to the target GitHub repository.

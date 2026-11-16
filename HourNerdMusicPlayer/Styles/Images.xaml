@@ -1,0 +1,139 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:System="clr-namespace:System;assembly=System">
+    <System:Uri x:Key="Image_MainIcon">
+        /HourNerdMusicPlayer;component/Images/main_icon.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Add">
+        /HourNerdMusicPlayer;component/Images/add.png
+    </System:Uri>
+    <System:Uri x:Key="Image_AddHover">
+        /HourNerdMusicPlayer;component/Images/add_hover.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Info">
+        /HourNerdMusicPlayer;component/Images/info.png
+    </System:Uri>
+    <System:Uri x:Key="Image_InfoHover">
+        /HourNerdMusicPlayer;component/Images/info_hover.png
+    </System:Uri>
+    <System:Uri x:Key="Image_MenuRight">
+        /HourNerdMusicPlayer;component/Images/menuRight.png
+    </System:Uri>
+    <System:Uri x:Key="Image_MenuRightHover">
+        /HourNerdMusicPlayer;component/Images/menuRight_hover.png
+    </System:Uri>
+    <System:Uri x:Key="Image_MenuLeft">
+        /HourNerdMusicPlayer;component/Images/menuLeft.png
+    </System:Uri>
+    <System:Uri x:Key="Image_MenuLeftHover">
+        /HourNerdMusicPlayer;component/Images/menuLeft_hover.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Next">
+        /HourNerdMusicPlayer;component/Images/next.png
+    </System:Uri>
+    <System:Uri x:Key="Image_NextHover">
+        /HourNerdMusicPlayer;component/Images/next_hover.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Pause">
+        /HourNerdMusicPlayer;component/Images/pause.png
+    </System:Uri>
+    <System:Uri x:Key="Image_PauseHover">
+        /HourNerdMusicPlayer;component/Images/pause_hover.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Play">
+        /HourNerdMusicPlayer;component/Images/play.png
+    </System:Uri>
+    <System:Uri x:Key="Image_PlayHover">
+        /HourNerdMusicPlayer;component/Images/play_hover.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Playlist">
+        /HourNerdMusicPlayer;component/Images/playlist.png
+    </System:Uri>
+    <System:Uri x:Key="Image_PlaylistHover">
+        /HourNerdMusicPlayer;component/Images/playlist_hover.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Settings">
+        /HourNerdMusicPlayer;component/Images/settings.png
+    </System:Uri>
+    <System:Uri x:Key="Image_SettingsHover">
+        /HourNerdMusicPlayer;component/Images/settings_hover.png
+    </System:Uri>
+    <System:Uri x:Key="Image_ThumbUp">
+        /HourNerdMusicPlayer;component/Images/thumbUp.png
+    </System:Uri>
+    <System:Uri x:Key="Image_ThumbLove">
+        /HourNerdMusicPlayer;component/Images/thumbLove.png
+    </System:Uri>
+    <System:Uri x:Key="Image_ThumbDown">
+        /HourNerdMusicPlayer;component/Images/thumbDown.png
+    </System:Uri>
+    <System:Uri x:Key="Image_ThumbBan">
+        /HourNerdMusicPlayer;component/Images/thumbBan.png
+    </System:Uri>
+
+    <System:Uri x:Key="Image_Check">
+        /HourNerdMusicPlayer;component/Images/check.png
+    </System:Uri>
+    <System:Uri x:Key="Image_CheckHover">
+        /HourNerdMusicPlayer;component/Images/check_hover.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Trash">
+        /HourNerdMusicPlayer;component/Images/trash.png
+    </System:Uri>
+    <System:Uri x:Key="Image_TrashHover">
+        /HourNerdMusicPlayer;component/Images/trash_hover.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Write">
+        /HourNerdMusicPlayer;component/Images/write.png
+    </System:Uri>
+    <System:Uri x:Key="Image_WriteHover">
+        /HourNerdMusicPlayer;component/Images/write_hover.png
+    </System:Uri>
+
+    <System:Uri x:Key="Image_Error">
+        /HourNerdMusicPlayer;component/Images/error.png
+    </System:Uri>
+    <System:Uri x:Key="Image_ErrorHover">
+        /HourNerdMusicPlayer;component/Images/error_hover.png
+    </System:Uri>
+
+    <System:Uri x:Key="Image_Close">
+        /HourNerdMusicPlayer;component/Images/close.png
+    </System:Uri>
+    <System:Uri x:Key="Image_CloseHover">
+        /HourNerdMusicPlayer;component/Images/close_hover.png
+    </System:Uri>
+
+    <System:Uri x:Key="Image_Background">
+        /HourNerdMusicPlayer;component/Images/background.png
+    </System:Uri>
+
+    <System:Uri x:Key="Image_Volume_0">
+        /HourNerdMusicPlayer;component/Images/volume_0.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Volume_0_Hover">
+        /HourNerdMusicPlayer;component/Images/volume_0_hover.png
+    </System:Uri>
+
+    <System:Uri x:Key="Image_Volume_33">
+        /HourNerdMusicPlayer;component/Images/volume_33.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Volume_33_Hover">
+        /HourNerdMusicPlayer;component/Images/volume_33_hover.png
+    </System:Uri>
+
+    <System:Uri x:Key="Image_Volume_66">
+        /HourNerdMusicPlayer;component/Images/volume_66.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Volume_66_Hover">
+        /HourNerdMusicPlayer;component/Images/volume_66_hover.png
+    </System:Uri>
+
+    <System:Uri x:Key="Image_Volume_100">
+        /HourNerdMusicPlayer;component/Images/volume_100.png
+    </System:Uri>
+    <System:Uri x:Key="Image_Volume_100_Hover">
+        /HourNerdMusicPlayer;component/Images/volume_100_hover.png
+    </System:Uri>
+
+    <BitmapImage x:Key="Image_UnknownArt" UriSource="/HourNerdMusicPlayer;component/Images/unknown_art.png" />
+</ResourceDictionary>

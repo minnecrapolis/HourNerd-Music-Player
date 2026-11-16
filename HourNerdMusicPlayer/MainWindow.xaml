@@ -1,0 +1,128 @@
+﻿<Window x:Class="HourNerdMusicPlayer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:HourNerdMusicPlayer"
+        xmlns:hotkeys="clr-namespace:HourNerdMusicPlayer.Hotkeys"
+        xmlns:converters="clr-namespace:GUI.Converters"
+        Title="HourNerd Music Player" Width="1240" Height="800" MinWidth="1000" MinHeight="680"
+        Background="{DynamicResource HNBackground}" Foreground="{DynamicResource HNText}" FontFamily="Segoe UI" FontSize="14"
+        WindowStartupLocation="CenterScreen" WindowStyle="None" ResizeMode="CanResize"
+        Icon="/HourNerdMusicPlayer;component/Images/main_icon.png"
+        Loaded="Window_Loaded" Closing="Window_Closing" StateChanged="Window_StateChanged">
+    <WindowChrome.WindowChrome><WindowChrome CaptionHeight="0" ResizeBorderThickness="6" /></WindowChrome.WindowChrome>
+    <Window.CommandBindings>
+        <CommandBinding Command="{x:Static hotkeys:PlayerCommands.PlayPause}" Executed="PlayPauseToggled" CanExecute="CanExecutePlayPauseSkip" />
+        <CommandBinding Command="{x:Static hotkeys:PlayerCommands.Next}" Executed="SkipTrack" CanExecute="CanExecutePlayPauseSkip" />
+        <CommandBinding Command="{x:Static hotkeys:PlayerCommands.ThumbsUp}" Executed="ExecuteThumbsUp" CanExecute="CanExecuteThumbsUpDown" />
+        <CommandBinding Command="{x:Static hotkeys:PlayerCommands.ThumbsDown}" Executed="ExecuteThumbsDown" CanExecute="CanExecuteThumbsUpDown" />
+    </Window.CommandBindings>
+    <Window.Resources>
+        <converters:BinaryImageConverter x:Key="SidebarArtworkConverter" />
+        <Style x:Key="RailButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="{DynamicResource HNSecondaryText}" />
+            <Setter Property="BorderThickness" Value="0" /><Setter Property="Padding" Value="12,10" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" /><Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+                <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource HNHover}" /><Setter Property="Foreground" Value="{DynamicResource HNText}" /></Trigger>
+                    <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4" /></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+        <Style x:Key="StationRow" TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="Padding" Value="10" />
+            <Setter Property="Margin" Value="0,2" /><Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource HNText}" /><Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
+                <Border x:Name="StationSurface" Background="{TemplateBinding Background}" CornerRadius="9" Padding="{TemplateBinding Padding}">
+                    <ContentPresenter />
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="StationSurface" Property="Background" Value="{DynamicResource HNHover}" /></Trigger>
+                    <Trigger Property="IsSelected" Value="True"><Setter TargetName="StationSurface" Property="Background" Value="{DynamicResource HNSelected}" /><Setter Property="Foreground" Value="{DynamicResource HNSelectedText}" /></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+    </Window.Resources>
+    <Border Name="borderMain" BorderBrush="{DynamicResource HNBorder}" BorderThickness="1" CornerRadius="12">
+        <Grid Name="ResizeBorders">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="276" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="{DynamicResource HNSidebar}" BorderBrush="{DynamicResource HNBorder}" BorderThickness="0,0,1,0">
+                <Grid Margin="18,18,16,14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="82" /><RowDefinition Height="78" /><RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="38" Height="38" Background="{DynamicResource HNAccent}" CornerRadius="11" Margin="0,0,11,0">
+                                <TextBlock Text="HN" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource HNAccentForeground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center"><TextBlock Text="HourNerd" FontSize="23" FontWeight="Bold" /><TextBlock Text="MUSIC PLAYER" FontSize="10" Foreground="{DynamicResource HNMutedText}" /></StackPanel>
+                        </StackPanel>
+                        <TextBlock Text="Your stations. Always within reach." Foreground="{DynamicResource HNMutedText}" FontSize="11" Margin="0,14,0,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="1">
+                        <DockPanel Margin="2,0,0,8"><TextBlock Text="YOUR STATIONS" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource HNMutedText}" /><TextBlock x:Name="SidebarStationCount" Text="0" Foreground="{DynamicResource HNMutedText}" FontSize="11" HorizontalAlignment="Right" /></DockPanel>
+                        <TextBox x:Name="SidebarSearch" TextChanged="SidebarSearch_TextChanged" ToolTip="Filter stations by name" Height="32"
+                                 Background="{DynamicResource HNInput}" Foreground="{DynamicResource HNText}" BorderBrush="{DynamicResource HNBorder}" BorderThickness="1" Padding="9,4" />
+                        <TextBlock Text="Search stations" Foreground="{DynamicResource HNMutedText}" FontSize="10" Margin="2,3,0,0" />
+                    </StackPanel>
+                    <Grid Grid.Row="2">
+                        <ListBox x:Name="SidebarStationList" SelectionChanged="SidebarStationList_SelectionChanged" IsEnabled="False"
+                                 BorderThickness="0" Background="Transparent" ItemContainerStyle="{StaticResource StationRow}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling">
+                            <ListBox.ItemTemplate><DataTemplate><Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="40" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Width="32" Height="32" Background="{DynamicResource HNSurface}" CornerRadius="7" ClipToBounds="True">
+                                    <Grid><TextBlock Text="♪" FontSize="22" Foreground="{DynamicResource HNAccentText}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        <Image Source="{Binding ArtImage, Converter={StaticResource SidebarArtworkConverter}}" Stretch="UniformToFill" /></Grid>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" ToolTip="{Binding Name}" VerticalAlignment="Center" FontSize="13" TextTrimming="CharacterEllipsis" />
+                            </Grid></DataTemplate></ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock x:Name="SidebarEmpty" Text="Sign in to see your stations." TextWrapping="Wrap" Foreground="{DynamicResource HNMutedText}" FontSize="13" Margin="12,25" IsHitTestVisible="False" />
+                    </Grid>
+                    <StackPanel Grid.Row="3" Margin="0,12,0,12">
+                        <Border Height="1" Background="{DynamicResource HNBorder}" Margin="0,0,0,10" />
+                        <UniformGrid Columns="2">
+                            <Button Content="Now playing" Tag="playing" Click="Navigation_Click" Style="{StaticResource RailButton}" />
+                            <Button Content="History" Tag="history" Click="Navigation_Click" Style="{StaticResource RailButton}" />
+                            <Button Content="Manage stations" Tag="stations" Click="Navigation_Click" Style="{StaticResource RailButton}" />
+                            <Button Content="+ Add station" Tag="add" Click="Navigation_Click" Style="{StaticResource RailButton}" />
+                            <Button Content="Settings" Tag="settings" Click="Navigation_Click" Style="{StaticResource RailButton}" />
+                            <Button Content="About" Tag="about" Click="Navigation_Click" Style="{StaticResource RailButton}" />
+                        </UniformGrid>
+                        <Button Content="Tip the Developer" Tag="tip" Click="Navigation_Click" Style="{StaticResource RailButton}" Foreground="{DynamicResource HNAccentText}" />
+                    </StackPanel>
+                    <Border Grid.Row="4" Background="{DynamicResource HNInput}" CornerRadius="9" Padding="10">
+                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center"><TextBlock Text="PANDORA" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource HNMutedText}" /><TextBlock x:Name="SidebarStatus" Text="Not signed in" FontSize="11" Foreground="{DynamicResource HNSecondaryText}" Margin="0,4,4,0" TextTrimming="CharacterEllipsis" /></StackPanel>
+                            <Button Grid.Column="1" Name="btnLogout" Click="btnLogout_Click" Content="Sign out" Style="{StaticResource RailButton}" Padding="7,9" IsEnabled="False" />
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+            <Grid x:Name="ContentGrid" Grid.Column="1">
+                <Grid.RowDefinitions><RowDefinition Height="52" /><RowDefinition Height="*" /><RowDefinition Height="0" /></Grid.RowDefinitions>
+                <Grid x:Name="TitleBar" Grid.Row="0" Background="{DynamicResource HNSurface}">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="96" /></Grid.ColumnDefinitions>
+                    <TextBlock x:Name="PageHeading" Text="Welcome to your music" Margin="25,0,12,0" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,8,0">
+                        <Button Content="―" ToolTip="Minimize" Style="{StaticResource RailButton}" Width="40" Click="MinimizeButton_Click" />
+                        <Button Content="×" ToolTip="Close" Style="{StaticResource RailButton}" Width="40" FontSize="21" Click="CloseButton_Click" />
+                    </StackPanel>
+                    <Border Height="1" Background="{DynamicResource HNBorder}" VerticalAlignment="Bottom" Grid.ColumnSpan="2" />
+                </Grid>
+                <ContentControl Grid.Row="1" x:Name="cntCtrl" Margin="24,14,24,10" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                <Border Grid.Row="2" Background="{DynamicResource HNSurface}" BorderBrush="{DynamicResource HNBorder}" BorderThickness="0,1,0,0">
+                    <local:MainBar x:Name="mainBar" Height="75" Margin="20,0" />
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

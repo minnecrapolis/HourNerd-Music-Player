@@ -1,0 +1,10 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- packages.config restore does not inject build imports. Share Microsoft's
+       targeting-package import across all nine legacy projects and WPF's
+       generated temporary project. The package config is owned by HourNerdMusicPlayer. -->
+  <PropertyGroup>
+    <HourNerdMusicPlayerReferenceAssemblyTargets>$(MSBuildThisFileDirectory)packages\Microsoft.NETFramework.ReferenceAssemblies.net481.1.0.3\build\Microsoft.NETFramework.ReferenceAssemblies.net481.targets</HourNerdMusicPlayerReferenceAssemblyTargets>
+  </PropertyGroup>
+  <Import Project="$(HourNerdMusicPlayerReferenceAssemblyTargets)"
+          Condition="'$(TargetFrameworkVersion)' == 'v4.8.1' And Exists('$(HourNerdMusicPlayerReferenceAssemblyTargets)')" />
+</Project>
