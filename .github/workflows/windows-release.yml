@@ -53,6 +53,16 @@ jobs:
           if (!(Test-Path -LiteralPath $compiler)) { throw 'Inno Setup 6 was not found on the Windows runner.' }
           & '.\Build-Windows-Installers.ps1' -CompilerPath $compiler
 
+      - name: Retain validated audio repair DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: HourNerd-Audio-Repair
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            HourNerdMusicPlayer/bin/Release/BassPlayer.dll
+            Libs/BassPlayer/BassPlayer.cs
+
       - name: Prepare release assets
         run: |
           $ErrorActionPreference = 'Stop'
