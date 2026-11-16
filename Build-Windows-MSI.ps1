@@ -15,11 +15,32 @@ $installer = $null
 $database = $null
 $upgradeCode = '{28A6E5C5-D828-4F8B-8B89-95112003DC13}'
 
+function Get-ComArguments([object[]]$Values) {
+    # PowerShell may wrap cmdlet results (such as Join-Path) in PSObject.
+    # The COM reflection binder needs the underlying string/integer/COM value.
+    $result = New-Object object[] $Values.Count
+    for ($index = 0; $index -lt $Values.Count; $index++) {
+        $value = $Values[$index]
+        if ($null -ne $value) { $value = $value.PSObject.BaseObject }
+        $result[$index] = $value
+    }
+    return ,$result
+}
 function Invoke-Com($Object, [string]$Name, [object[]]$Arguments = @()) {
-    $Object.GetType().InvokeMember($Name, [Reflection.BindingFlags]::InvokeMethod, $null, $Object, $Arguments)
+    $nativeArguments = Get-ComArguments $Arguments
+    try {
+        $Object.GetType().InvokeMember($Name, [Reflection.BindingFlags]::InvokeMethod, $null, $Object, $nativeArguments)
+    } catch {
+        throw "Windows Installer method $Name failed: $($_.Exception.Message)"
+    }
 }
 function Set-Com($Object, [string]$Name, [object[]]$Arguments) {
-    $Object.GetType().InvokeMember($Name, [Reflection.BindingFlags]::SetProperty, $null, $Object, $Arguments) | Out-Null
+    $nativeArguments = Get-ComArguments $Arguments
+    try {
+        $Object.GetType().InvokeMember($Name, [Reflection.BindingFlags]::SetProperty, $null, $Object, $nativeArguments) | Out-Null
+    } catch {
+        throw "Windows Installer property $Name failed: $($_.Exception.Message)"
+    }
 }
 function Release-Com($Object) {
     if ($null -ne $Object -and [Runtime.InteropServices.Marshal]::IsComObject($Object)) {
@@ -97,7 +118,7 @@ try {
     $files = @($files | Where-Object { $_.Name -notin @('Install-HourNerdMusicPlayer.ps1','Install-HourNerdMusicPlayer.cmd') })
     if ($files.Count -gt 30000) { throw 'This MSI builder supports at most 30000 files.' }
     $installer = New-Object -ComObject WindowsInstaller.Installer
-    $database = Invoke-Com $installer 'OpenDatabase' @($databasePath, 3)
+    $database = Invoke-Com $installer 'OpenDatabase' @([string]$databasePath, [int]3)
     $schema = @(
         'CREATE TABLE `Property` (`Property` CHAR(72) NOT NULL, `Value` CHAR(0) NOT NULL LOCALIZABLE PRIMARY KEY `Property`)',
         'CREATE TABLE `Directory` (`Directory` CHAR(72) NOT NULL, `Directory_Parent` CHAR(72), `DefaultDir` CHAR(255) NOT NULL LOCALIZABLE PRIMARY KEY `Directory`)',
@@ -212,7 +233,7 @@ try {
         $heading = if ($isWelcome) { '{\HeaderFont}HourNerd Music Player' } else { '{\HeaderFont}Installation complete' }
         $body = if ($isWelcome) {
             'Install HourNerd Music Player for your Windows account. Setup includes the player, supporting files, Start menu and desktop shortcuts. Close any running copy before continuing. Audio: BASS / BASS.NET. Based on Elpis; see About and the installed license notices.'
-        } else { 'HourNerd Music Player is installed. Open it from the Start menu and sign in with your own Pandora account. Your stations will appear after sign-in.' }
+        } else { 'HourNerd Music Player is installed. Open it from the Start menu, complete Pandora connection setup with the three separately supplied values, then sign in with your own Pandora account. Your stations will appear after sign-in.' }
         Add-Row 'Control' @('Dialog_','Control','Type','X','Y','Width','Height','Attributes','Text') @($dialog,'Heading','Text',15,15,340,28,3,$heading)
         Add-Row 'Control' @('Dialog_','Control','Type','X','Y','Width','Height','Attributes','Text') @($dialog,'Body','Text',15,55,340,90,3,$body)
         $label = if ($isWelcome) { 'Install' } else { 'Finish' }
