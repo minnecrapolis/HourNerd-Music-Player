@@ -233,7 +233,7 @@ try {
         $heading = if ($isWelcome) { '{\HeaderFont}HourNerd Music Player' } else { '{\HeaderFont}Installation complete' }
         $body = if ($isWelcome) {
             'Install HourNerd Music Player for your Windows account. Setup includes the player, supporting files, Start menu and desktop shortcuts. Close any running copy before continuing. Audio: BASS / BASS.NET. Based on Elpis; see About and the installed license notices.'
-        } else { 'HourNerd Music Player is installed. Open it from the Start menu, complete Pandora connection setup with the three separately supplied values, then sign in with your own Pandora account. Your stations will appear after sign-in.' }
+        } else { 'HourNerd Music Player is installed. Open it from the Start menu and sign in with your own Pandora account. Your stations will appear after sign-in.' }
         Add-Row 'Control' @('Dialog_','Control','Type','X','Y','Width','Height','Attributes','Text') @($dialog,'Heading','Text',15,15,340,28,3,$heading)
         Add-Row 'Control' @('Dialog_','Control','Type','X','Y','Width','Height','Attributes','Text') @($dialog,'Body','Text',15,55,340,90,3,$body)
         $label = if ($isWelcome) { 'Install' } else { 'Finish' }
@@ -288,9 +288,10 @@ try {
     # is an administrative image in a temporary folder, not an app installation:
     # no live shortcuts, accounts or installed-app registration are changed.
     $verify = Join-Path $work 'verify'
-    $verifyApp = Join-Path $verify 'app'
+    # Administrative images follow the Directory table beneath TARGETDIR.
+    $verifyApp = Join-Path $verify 'Programs\HourNerd Music Player'
     $log = Join-Path $dist 'MSI-build-validation.log'
-    $arguments = '/a "{0}" TARGETDIR="{1}" INSTALLDIR="{2}" /qn /norestart /L*v "{3}"' -f $databasePath, $verify, $verifyApp, $log
+    $arguments = '/a "{0}" TARGETDIR="{1}" /qn /norestart /L*v "{2}"' -f $databasePath, $verify, $log
     $check = Start-Process -FilePath "$env:SystemRoot\System32\msiexec.exe" -ArgumentList $arguments -Wait -PassThru
     if ($check.ExitCode -notin @(0,3010)) { throw "MSI extraction validation failed ($($check.ExitCode)). Details: $log" }
     foreach ($file in $files) {
