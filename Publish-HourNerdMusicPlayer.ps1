@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-$version = '1.1.3'
+$version = '1.1.4'
 $bin = Join-Path $PSScriptRoot 'HourNerdMusicPlayer\bin\Release'
 if (Get-Process HourNerdMusicPlayer -ErrorAction SilentlyContinue) {
     throw 'Close HourNerd Music Player, including its system tray icon, before publishing.'
@@ -36,8 +36,7 @@ try {
         if (Test-Path $path) { Copy-Item $path (Join-Path $stage $name) }
     }
     # Reject developer-machine path leakage in the compiled runtime, including
-    # CodeView/debug records. Public credits and the requested tipping address
-    # are intentional product information and are retained.
+    # CodeView/debug records. Public author credits are retained.
     $privatePaths = @($PSScriptRoot, $env:USERPROFILE) | Where-Object { $_ -and $_.Length -gt 7 }
     foreach ($file in (Get-ChildItem $stage -File | Where-Object { $_.Extension -in @('.exe','.dll') })) {
         $bytes = [IO.File]::ReadAllBytes($file.FullName)

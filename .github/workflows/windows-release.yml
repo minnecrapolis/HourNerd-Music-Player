@@ -1,4 +1,4 @@
-name: Windows installers and release
+﻿name: Windows installers and release
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       tag:
         description: Release tag matching the application version
         required: true
-        default: v1.1.3
+        default: v1.1.4
       publish:
         description: Publish a public prerelease after a successful build
         type: boolean
@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: windows-release-${{ github.ref_type == 'tag' && github.ref_name || inputs.tag || 'v1.1.3' }}
+  group: windows-release-${{ github.ref_type == 'tag' && github.ref_name || inputs.tag || 'v1.1.4' }}
   cancel-in-progress: false
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
       run:
         shell: powershell
     env:
-      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag || 'v1.1.3' }}
+      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag || 'v1.1.4' }}
     steps:
       - uses: actions/checkout@v4
 

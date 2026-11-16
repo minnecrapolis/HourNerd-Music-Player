@@ -2,7 +2,7 @@
 param()
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'Build this MSI on Windows.' }
-$version = '1.1.3'
+$version = '1.1.4'
 $dist = Join-Path $PSScriptRoot 'dist'
 $zip = Join-Path $dist "HourNerd-Music-Player-$version-Windows.zip"
 $output = Join-Path $dist "HourNerd-Music-Player-$version-Setup.msi"

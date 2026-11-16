@@ -2,7 +2,7 @@
 param([string]$CompilerPath, [switch]$UseExistingDistribution)
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-$version = '1.1.3'
+$version = '1.1.4'
 if (!$CompilerPath) {
     $compilerCommand = Get-Command ISCC.exe -ErrorAction SilentlyContinue
     if ($compilerCommand) { $CompilerPath = $compilerCommand.Source }

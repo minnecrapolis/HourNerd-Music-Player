@@ -58,7 +58,7 @@ namespace HourNerdMusicPlayer
             {
                 var text = new System.Text.StringBuilder();
                 text.AppendLine(DateTime.Now.ToString("O"));
-                text.AppendLine("HourNerd Music Player 1.1.3 managed exception");
+                text.AppendLine("HourNerd Music Player 1.1.4 managed exception");
                 for (Exception current = exception; current != null; current = current.InnerException)
                 {
                     text.AppendLine(current.GetType().FullName);

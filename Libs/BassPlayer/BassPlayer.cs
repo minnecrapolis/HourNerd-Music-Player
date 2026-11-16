@@ -268,10 +268,13 @@ namespace BassPlayer
         private SYNCPROC MetaTagSyncProcDelegate;
         private SYNCPROC PlaybackEndProcDelegate;
         private SYNCPROC PlaybackFadeOutProcDelegate;
-        private SYNCPROC PlaybackStreamFreedProcDelegate;
 
         #region Variables
 
+        // Serialize creation, explicit release and completion processing. Native
+        // callbacks only enqueue work and never acquire this gate.
+        private readonly object _streamLifetimeLock = new object();
+        private int _streamGeneration;
         private const int MAXSTREAMS = 1;
         private readonly List<int> DecoderPluginHandles = new List<int>();
         private readonly List<List<int>> StreamEventSyncHandles = new List<List<int>>();
@@ -607,13 +610,18 @@ namespace BassPlayer
             {
                 Stop(true);
             }
-            _proxyValue.Free();
+            if (_proxyValue.IsAllocated) _proxyValue.Free();
         }
 
         /// <summary>
         /// Dispose the BASS Audio engine. Free all BASS and Visualisation related resources
         /// </summary>
         public void DisposeAndCleanUp()
+        {
+            lock (_streamLifetimeLock) { DisposeAndCleanUpCore(); }
+        }
+
+        private void DisposeAndCleanUpCore()
         {
             Dispose();
             // Clean up BASS Resources
@@ -632,13 +640,12 @@ namespace BassPlayer
                 Bass.BASS_ChannelStop(_mixer);
             }
 
-            Bass.BASS_Stop();
-            Bass.BASS_Free();
-
-            foreach (int stream in Streams)
+            foreach (int stream in Streams.ToArray())
             {
                 FreeStream(stream);
             }
+            Bass.BASS_Stop();
+            Bass.BASS_Free();
 
             foreach (int pluginHandle in DecoderPluginHandles)
             {
@@ -681,7 +688,6 @@ namespace BassPlayer
 
                 PlaybackFadeOutProcDelegate = PlaybackFadeOutProc;
                 PlaybackEndProcDelegate = PlaybackEndProc;
-                PlaybackStreamFreedProcDelegate = PlaybackStreamFreedProc;
                 MetaTagSyncProcDelegate = MetaTagSyncProc;
 
                 DownloadProcDelegate = DownloadProc;
@@ -710,6 +716,11 @@ namespace BassPlayer
         /// </summary>
         public void FreeBass()
         {
+            lock (_streamLifetimeLock) { FreeBassCore(); }
+        }
+
+        private void FreeBassCore()
+        {
             if (!_BassFreed)
             {
                 Log.Info("BASS: Freeing BASS. Non-audio media playback requested.");
@@ -720,6 +731,7 @@ namespace BassPlayer
                     _mixer = 0;
                 }
 
+                foreach (int ownedStream in Streams.ToArray()) FreeStream(ownedStream);
                 Bass.BASS_Free();
                 _BassFreed = true;
             }
@@ -1163,6 +1175,11 @@ namespace BassPlayer
         /// <returns></returns>
         public bool Play(string filePath)
         {
+            lock (_streamLifetimeLock) { return PlayCore(filePath); }
+        }
+
+        private bool PlayCore(string filePath)
+        {
             if (!_Initialized)
             {
                 return false;
@@ -1217,42 +1234,14 @@ namespace BassPlayer
                     }
                 }
 
-                if (stream != 0 && StreamIsPlaying(stream))
-                {
-                    int oldStream = stream;
-                    double oldStreamDuration = GetTotalStreamSeconds(oldStream);
-                    double oldStreamElapsedSeconds = GetStreamElapsedTime(oldStream);
-                    double crossFadeSeconds = _CrossFadeIntervalMS;
-
-                    if (crossFadeSeconds > 0)
-                        crossFadeSeconds = crossFadeSeconds/1000.0;
-
-                    if ((oldStreamDuration - (oldStreamElapsedSeconds + crossFadeSeconds) > -1))
-                    {
-                        FadeOutStop(oldStream);
-                    }
-                    else
-                    {
-                        Bass.BASS_ChannelStop(oldStream);
-                    }
-
-                    doFade = true;
-                    stream = GetNextStream();
-
-                    if (stream != 0 || StreamIsPlaying(stream))
-                    {
-                        FreeStream(stream);
-                    }
-                }
-
+                // One playback slot: retire the previous handle exactly once.
+                // The old crossfade branch reused this same slot and freed it twice.
                 if (stream != 0)
                 {
-                    if (!Stopped) // Check if stopped already to avoid that Stop() is called two or three times
-                    {
-                        Stop(true);
-                    }
                     FreeStream(stream);
+                    stream = 0;
                 }
+                _CrossFading = false;
 
                 _State = PlayState.Init;
 
@@ -1272,7 +1261,7 @@ namespace BassPlayer
                     }
                     else
                     {
-                        streamFlags = BASSFlag.BASS_SAMPLE_FLOAT | BASSFlag.BASS_STREAM_AUTOFREE;
+                        streamFlags = BASSFlag.BASS_SAMPLE_FLOAT; // Released explicitly by the playback owner.
                     }
 
                     FilePath = filePath;
@@ -1307,7 +1296,7 @@ namespace BassPlayer
                         // Load a Mod file
                         stream = Bass.BASS_MusicLoad(filePath, 0, 0,
                                                      BASSFlag.BASS_SAMPLE_SOFTWARE | BASSFlag.BASS_SAMPLE_FLOAT |
-                                                     BASSFlag.BASS_MUSIC_AUTOFREE | BASSFlag.BASS_MUSIC_PRESCAN |
+                                                     BASSFlag.BASS_MUSIC_PRESCAN |
                                                      BASSFlag.BASS_MUSIC_RAMP, 0);
                     }
                     else
@@ -1322,7 +1311,7 @@ namespace BassPlayer
                         // Do an upmix of the stereo according to the matrix. 
                         // Now Plugin the stream to the mixer and set the mixing matrix
                         BassMix.BASS_Mixer_StreamAddChannel(_mixer, stream,
-                                                            BASSFlag.BASS_MIXER_MATRIX | BASSFlag.BASS_STREAM_AUTOFREE |
+                                                            BASSFlag.BASS_MIXER_MATRIX |
                                                             BASSFlag.BASS_MIXER_NORAMPIN | BASSFlag.BASS_MIXER_BUFFER);
                         BassMix.BASS_Mixer_ChannelSetMatrix(stream, _MixingMatrix);
                     }
@@ -1497,7 +1486,8 @@ namespace BassPlayer
             // syncHandles.Add(RegisterPlaybackFadeOutEvent(stream, streamIndex, _CrossFadeIntervalMS));
 
             syncHandles.Add(RegisterPlaybackEndEvent(stream, streamIndex));
-            syncHandles.Add(RegisterStreamFreedEvent(stream));
+            // Stream lifetime is explicit. FREE is not a track-completion event:
+            // it also fires during stop, replacement and device shutdown.
 
             return syncHandles;
         }
@@ -1544,11 +1534,12 @@ namespace BassPlayer
         private int RegisterPlaybackEndEvent(int stream, int streamIndex)
         {
             int syncHandle = 0;
+            int generation = Interlocked.Increment(ref _streamGeneration);
 
             syncHandle = Bass.BASS_ChannelSetSync(stream,
                                                   BASSSync.BASS_SYNC_ONETIME | BASSSync.BASS_SYNC_END,
                                                   0, PlaybackEndProcDelegate,
-                                                  IntPtr.Zero);
+                                                  new IntPtr(generation));
 
             if (syncHandle == 0)
             {
@@ -1564,23 +1555,6 @@ namespace BassPlayer
         /// </summary>
         /// <param name="stream"></param>
         /// <returns></returns>
-        private int RegisterStreamFreedEvent(int stream)
-        {
-            int syncHandle = 0;
-
-            syncHandle = Bass.BASS_ChannelSetSync(stream, BASSSync.BASS_SYNC_FREE, 0, PlaybackStreamFreedProcDelegate,
-                                                  IntPtr.Zero);
-
-            if (syncHandle == 0)
-            {
-                Log.Debug("BASS: RegisterStreamFreedEvent of stream {0} failed with error {1}", stream,
-                          Enum.GetName(typeof (BASSError), Bass.BASS_ErrorGetCode()));
-            }
-
-            return syncHandle;
-        }
-
-
         /// <summary>
         /// Unregister the Playback Events
         /// </summary>
@@ -1614,31 +1588,24 @@ namespace BassPlayer
         /// <param name="stream"></param>
         private void FreeStream(int stream)
         {
-            int streamIndex = -1;
-
-            for (int i = 0; i < Streams.Count; i++)
+            lock (_streamLifetimeLock)
             {
-                if (Streams[i] == stream)
-                {
-                    streamIndex = i;
-                    break;
-                }
+                if (stream == 0) return;
+                int streamIndex = Streams.IndexOf(stream);
+                if (streamIndex < 0) return; // Already released, or never owned here.
+
+                // Clear ownership BEFORE entering native code, which may run callbacks.
+                Streams[streamIndex] = 0;
+                Interlocked.Increment(ref _streamGeneration);
+                var handles = StreamEventSyncHandles[streamIndex];
+                StreamEventSyncHandles[streamIndex] = new List<int>();
+                if (handles != null)
+                    foreach (int syncHandle in handles)
+                        if (syncHandle != 0) Bass.BASS_ChannelRemoveSync(stream, syncHandle);
+
+                Bass.BASS_StreamFree(stream);
+                _CrossFading = false;
             }
-
-            if (streamIndex != -1)
-            {
-                List<int> eventSyncHandles = StreamEventSyncHandles[streamIndex];
-
-                foreach (int syncHandle in eventSyncHandles)
-                {
-                    Bass.BASS_ChannelRemoveSync(stream, syncHandle);
-                }
-            }
-
-            Bass.BASS_StreamFree(stream);
-            stream = 0;
-
-            _CrossFading = false; // Set crossfading to false, Play() will update it when the next song starts
         }
 
         /// <summary>
@@ -1765,18 +1732,32 @@ namespace BassPlayer
         /// <param name="userData"></param>
         private void PlaybackEndProc(int handle, int stream, int data, IntPtr userData)
         {
-            Log.Debug("BASS: PlaybackEndProc of stream {0}", stream);
-
-            if (TrackPlaybackCompleted != null)
+            // BASS_SYNC_ONETIME unregisters itself. Do not remove the sync or
+            // invoke application/UI code on BASS's native callback thread.
+            ThreadPool.QueueUserWorkItem(delegate
             {
-                TrackPlaybackCompleted(this, FilePath);
-            }
-
-            bool removed = Bass.BASS_ChannelRemoveSync(stream, handle);
-            if (removed)
-            {
-                Log.Debug("BassAudio: *** BASS_ChannelRemoveSync in PlaybackEndProc");
-            }
+                try
+                {
+                    lock (_streamLifetimeLock)
+                    {
+                        if (userData.ToInt64() != _streamGeneration || stream != GetCurrentStream() || stream == 0) return;
+                        if (_State != PlayState.Playing && _State != PlayState.Paused) return;
+                        UpdateTimer.Stop();
+                        string completedPath = FilePath;
+                        FreeStream(stream);
+                        Log.Debug("BASS: Retired completed stream {0}", stream);
+                        if (TrackPlaybackCompleted != null)
+                            TrackPlaybackCompleted(this, completedPath);
+                        HandleSongEnded(false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Never unwind a managed exception into native BASS callbacks.
+                    Log.Error("BASS: Deferred track completion failed: {0}", ex.GetType().Name);
+                    Util.Log.O("Audio completion failed: " + ex.GetType().Name);
+                }
+            });
         }
 
         /// <summary>
@@ -1786,23 +1767,6 @@ namespace BassPlayer
         /// <param name="stream"></param>
         /// <param name="data"></param>
         /// <param name="userData"></param>
-        private void PlaybackStreamFreedProc(int handle, int stream, int data, IntPtr userData)
-        {
-            //Util.Log.O("PlaybackStreamFreedProc");
-            Log.Debug("BASS: PlaybackStreamFreedProc of stream {0}", stream);
-
-            HandleSongEnded(false);
-
-            for (int i = 0; i < Streams.Count; i++)
-            {
-                if (stream == Streams[i])
-                {
-                    Streams[i] = 0;
-                    break;
-                }
-            }
-        }
-
         /// <summary>
         /// Gets the tags from the Internet Stream.
         /// </summary>
@@ -1935,6 +1899,11 @@ namespace BassPlayer
         /// </summary>
         public void PlayPause()
         {
+            lock (_streamLifetimeLock) { PlayPauseCore(); }
+        }
+
+        private void PlayPauseCore()
+        {
             _CrossFading = false;
             int stream = GetCurrentStream();
 
@@ -2010,6 +1979,11 @@ namespace BassPlayer
         /// </summary>
         public void Stop(bool songSkipped = false)
         {
+            lock (_streamLifetimeLock) { StopCore(songSkipped); }
+        }
+
+        private void StopCore(bool songSkipped)
+        {
             _CrossFading = false;
 
             int stream = GetCurrentStream();
@@ -2035,6 +2009,7 @@ namespace BassPlayer
                     Bass.BASS_ChannelStop(stream);
                 }
 
+                FreeStream(stream);
                 stream = 0;
 
                 if (PlaybackStop != null)

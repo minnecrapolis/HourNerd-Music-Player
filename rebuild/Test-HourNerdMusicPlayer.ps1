@@ -11,3 +11,10 @@ if ($LASTEXITCODE -ne 0) { throw 'API regression test compilation failed.' }
 Copy-Item (Join-Path $bin 'HourNerdMusicPlayer.exe.config') "$runner.config" -Force
 & $runner
 if ($LASTEXITCODE -ne 0) { throw 'API regression tests failed.' }
+
+$audioRunner = Join-Path $bin 'HourNerdMusicPlayer.AudioLifetimeTests.exe'
+& $compiler /nologo /target:exe /platform:x86 "/out:$audioRunner" "/reference:$bin\BassPlayer.dll" "/reference:$bin\Bass.Net.dll" (Join-Path $PSScriptRoot 'AudioLifetimeTests.cs')
+if ($LASTEXITCODE -ne 0) { throw 'Audio lifecycle regression test compilation failed.' }
+Copy-Item (Join-Path $bin 'HourNerdMusicPlayer.exe.config') "$audioRunner.config" -Force
+& $audioRunner
+if ($LASTEXITCODE -ne 0) { throw 'Native audio lifecycle regression tests failed.' }
