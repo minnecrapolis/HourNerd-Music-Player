@@ -123,9 +123,6 @@
                            Foreground="{DynamicResource MainFontBrush}"/>
               </Hyperlink> 
             </TextBlock>
-            <Button Grid.Row="2" Grid.ColumnSpan="3" Content="Pandora connection setup"
-                    HorizontalAlignment="Center" Margin="0,8" Click="ConnectionSetup_Click"
-                    Style="{StaticResource MaterialDesignFlatButton}" />
         </Grid>
         <Border Name="WaitScreen" BorderThickness="0" Background="{x:Null}"
             Visibility="Collapsed" Grid.RowSpan="4" Grid.ColumnSpan="3">

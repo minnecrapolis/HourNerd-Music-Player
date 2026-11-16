@@ -95,7 +95,8 @@ jobs:
           path: dist/MSI-build-validation.log
 
       - name: Publish public GitHub prerelease
-        if: github.event_name == 'push' || inputs.publish
+        # Paused: release must support ordinary Pandora account sign-in without end-user API setup.
+        if: ${{ false }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}

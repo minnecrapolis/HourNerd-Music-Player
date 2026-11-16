@@ -96,56 +96,11 @@ namespace HourNerdMusicPlayer
 
         public void Login()
         {
-            if (!PandoraSharp.Pandora.HasConnectionConfiguration)
-            {
-                lblError.Text = "Choose Pandora connection setup before signing in.";
-                return;
-            }
             _loginFailed = false;
             //WaitScreen.Visibility = Visibility.Visible;
             _player.Connect(txtEmail.Text, txtPassword.Password);
             if (ConnectingEvent != null)
                 ConnectingEvent();
-        }
-
-        private void ConnectionSetup_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new Window { Title = "Pandora connection setup", Width = 440,
-                SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = Window.GetWindow(this) };
-            var panel = new StackPanel { Margin = new Thickness(20) };
-            panel.Children.Add(new TextBlock { Text = "Enter the partner connection password and both protocol keys supplied separately by your provider or administrator. These are separate from your personal Pandora account password. They are encrypted for your Windows account and stay on this computer.",
-                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) });
-            panel.Children.Add(new TextBlock { Text = "Partner connection password" });
-            var input = new PasswordBox { Height = 30, MaxLength = 512 };
-            panel.Children.Add(input);
-            panel.Children.Add(new TextBlock { Text = "Incoming (decryption) key", Margin = new Thickness(0, 8, 0, 0) });
-            var incoming = new PasswordBox { Height = 30, MaxLength = 56 };
-            panel.Children.Add(incoming);
-            panel.Children.Add(new TextBlock { Text = "Outgoing (encryption) key", Margin = new Thickness(0, 8, 0, 0) });
-            var outgoing = new PasswordBox { Height = 30, MaxLength = 56 };
-            panel.Children.Add(outgoing);
-            var status = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) };
-            panel.Children.Add(status);
-            var save = new Button { Content = "Save connection", IsDefault = true, Margin = new Thickness(0, 12, 0, 0), Padding = new Thickness(8) };
-            save.Click += delegate
-            {
-                try
-                {
-                    PandoraSharp.Pandora.SaveConnection(input.Password, incoming.Password, outgoing.Password);
-                    input.Clear(); incoming.Clear(); outgoing.Clear();
-                    lblError.Text = "Connection value saved. Sign in with your own Pandora account.";
-                    dialog.DialogResult = true;
-                }
-                catch (System.Exception)
-                {
-                    status.Text = "Could not save the connection value. Enter all three values (keys: 4 to 56 UTF-8 bytes), and check that your Windows profile is writable.";
-                }
-            };
-            panel.Children.Add(save);
-            dialog.Content = panel;
-            dialog.Loaded += delegate { input.Focus(); };
-            dialog.ShowDialog();
         }
 
         private void btnLogin_Click(object sender, RoutedEventArgs e)
