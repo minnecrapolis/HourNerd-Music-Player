@@ -55,8 +55,9 @@ do not sign in to a live Pandora account.
 
 `Build-Windows-Installers.ps1` builds the EXE and native MSI from a validated
 public distribution. The Windows workflow builds and tests changes on `main`,
-but its public publication step is paused. The EXE installer has built
-successfully; MSI administrative extraction validation still needs correction.
+but its public publication step is paused. The EXE and MSI installers now build successfully, including MSI administrative
+extraction and per-file hash verification. The successful packaging run is
+[available here](https://github.com/minnecrapolis/HourNerd-Music-Player/actions/runs/43948271913).
 A successful compilation is not a substitute for hands-on playback testing.
 
 ## Features and testing status
