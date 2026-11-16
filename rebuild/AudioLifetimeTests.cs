@@ -62,9 +62,10 @@ internal static class AudioLifetimeTests
         {
             WriteWave(path);
             Assert(Bass.BASS_Init(0, 44100, 0, IntPtr.Zero), "BASS no-sound initialization failed: " + Bass.BASS_ErrorGetCode());
+            var engine = new BassAudioEngine();
             Check("a stream is natively released only once, including concurrent releases", delegate
             {
-                var engine = new BassAudioEngine(); int freed = 0;
+                int freed = 0;
                 int stream = Attach(engine, path, delegate { Interlocked.Increment(ref freed); });
                 var threads = new List<Thread>();
                 for (int n = 0; n < 8; n++)
@@ -77,7 +78,7 @@ internal static class AudioLifetimeTests
             });
             Check("twenty native track ends retire the handle before advancing playback", delegate
             {
-                var engine = new BassAudioEngine(); int ended = 0, freed = 0, unretired = 0;
+                int ended = 0, freed = 0, unretired = 0;
                 using (var finished = new AutoResetEvent(false))
                 {
                     engine.PlaybackStateChanged += delegate(object sender, BassAudioEngine.PlayState oldState, BassAudioEngine.PlayState newState)
@@ -99,7 +100,7 @@ internal static class AudioLifetimeTests
             });
             Check("a stale queued completion cannot free a newer stream", delegate
             {
-                var engine = new BassAudioEngine(); int freed = 0, ended = 0;
+                int freed = 0, ended = 0;
                 int oldStream = Attach(engine, path, delegate { Interlocked.Increment(ref freed); });
                 int oldGeneration = (int)Field(engine, "_streamGeneration");
                 Call(engine, "FreeStream", oldStream);
