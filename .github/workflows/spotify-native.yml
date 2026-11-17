@@ -1,0 +1,33 @@
+name: Standalone Spotify native engine
+on:
+  push:
+    branches: [spotify-standalone]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: spotify-native-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native-spotify
+      - name: Build native Spotify playback engine
+        working-directory: native-spotify
+        run: cargo build --release
+      - name: Verify music-only queues and unrestricted local skipping
+        working-directory: native-spotify
+        run: cargo test --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HourNerd-Spotify-native-engine
+          path: |
+            native-spotify/target/release/hournerd-spotify.exe
+            native-spotify/Cargo.lock
+          retention-days: 14

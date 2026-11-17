@@ -1,0 +1,20 @@
+[package]
+name = "hournerd-spotify"
+version = "0.2.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+
+[lib]
+name = "hournerd_spotify"
+path = "src/lib.rs"
+
+[dependencies]
+librespot = { git = "https://github.com/librespot-org/librespot", rev = "15e02e86c72d96dd39d548e3749f00abe39ffdde", default-features = false, features = ["native-tls", "rodio-backend"] }
+librespot-oauth = { git = "https://github.com/librespot-org/librespot", rev = "15e02e86c72d96dd39d548e3749f00abe39ffdde", default-features = false, features = ["native-tls"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+protobuf = "3.7"
+protobuf-json-mapping = "3.7"
+reqwest = { version = "0.12", default-features = false, features = ["json", "native-tls"] }
