@@ -25,8 +25,8 @@ class SpotifyUiTests
         for(int i=0;i<count;i++){var found=Find(VisualTreeHelper.GetChild(parent,i),match);if(found!=null)return found;}
         return null;
     }
-    static bool Text(string text) { return Find(window,o=>o is TextBlock&&((TextBlock)o).Text==text)!=null; }
-    static Button Button(string text) { return Find(window,o=>o is Button&&Convert.ToString(((Button)o).Content)==text) as Button; }
+    static bool Text(string text) { return Find((DependencyObject)window.Content,o=>o is TextBlock&&((TextBlock)o).Text==text)!=null; }
+    static Button Button(string text) { return Find((DependencyObject)window.Content,o=>o is Button&&Convert.ToString(((Button)o).Content)==text) as Button; }
     static void Check(bool condition,string message) { if(!condition)throw new Exception(message);Console.WriteLine("PASS "+message); }
     static void Snapshot() {
         var request=(HttpWebRequest)WebRequest.Create("http://127.0.0.1:48372/exchange");
@@ -40,7 +40,7 @@ class SpotifyUiTests
         try {
             if(++attempts>90)throw new Exception("Timed out waiting for native UI startup");
             if(stage==0){
-                window=app.MainWindow as MainWindow;if(window==null||!(bool)Field("_finalComplete"))return;
+                window.UpdateLayout();
                 services=(ComboBox)window.FindName("MusicService");
                 Check(services!=null&&services.Items.Count==2,"native service selector contains Pandora and Spotify");
                 services.SelectedIndex=1;stage++;return;
@@ -52,15 +52,16 @@ class SpotifyUiTests
             }
             if(stage==2){
                 Check(Text("Fixture song"),"authenticated song metadata appears in native UI");
-                window.UpdateLayout();
-                var bitmap=new RenderTargetBitmap((int)window.ActualWidth,(int)window.ActualHeight,96,96,PixelFormats.Pbgra32);bitmap.Render(window);
+                var view=(FrameworkElement)window.Content;
+                view.Measure(new Size(1180,760));view.Arrange(new Rect(0,0,1180,760));view.UpdateLayout();
+                var bitmap=new RenderTargetBitmap(1180,760,96,96,PixelFormats.Pbgra32);bitmap.Render(view);
                 var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(bitmap));
                 using(var file=File.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"spotify-preview.png")))encoder.Save(file);
                 Button("Settings").RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));stage++;return;
             }
             if(stage==3){
                 var settings=(FrameworkElement)Field("_settingsPage");
-                Check(settings.IsVisible,"Settings page opens while Spotify is selected");
+                Check(((ContentControl)window.FindName("cntCtrl")).Content==settings,"Settings page opens while Spotify is selected");
                 Check(settings.FindName("PandoraAccountStatus")!=null&&settings.FindName("btnPandoraSignIn")!=null&&settings.FindName("btnSpotifyAccount")!=null&&settings.FindName("btnSpotifySetup")!=null,"Settings offers separate Pandora and Spotify account controls");
                 services.SelectedIndex=0;stage++;return;
             }
@@ -80,10 +81,16 @@ class SpotifyUiTests
         try {
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
             app=new App();app.Init();
-            app.StartupUri=new Uri("pack://application:,,,/HourNerdMusicPlayer;component/MainWindow.xaml",UriKind.Absolute);
+            app.StartupUri=null;
+            // Exercise actual WPF controls without starting native audio or requiring a desktop session.
+            window=new MainWindow();
+            var settings=(Settings)Activator.CreateInstance(typeof(Settings),new object[]{null,Field("_config"),null});
+            typeof(MainWindow).GetField("_settingsPage",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(window,settings);
+            var view=(FrameworkElement)window.Content;
+            view.Measure(new Size(1180,760));view.Arrange(new Rect(0,0,1180,760));view.UpdateLayout();
             app.DispatcherUnhandledException+=(s,e)=>{Console.Error.WriteLine(e.Exception);Console.Error.Flush();Environment.Exit(1);};
             timer=new DispatcherTimer { Interval=TimeSpan.FromMilliseconds(500) };timer.Tick+=Tick;timer.Start();
-            app.Run();return 1;
+            Dispatcher.Run();return 1;
         }catch(Exception error){Console.Error.WriteLine(error);return 1;}
     }
 }
