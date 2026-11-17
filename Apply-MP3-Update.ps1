@@ -36,7 +36,7 @@ try {
         Copy-Item (Join-Path $PSScriptRoot 'Spotify\*') $spotifyTarget -Recurse -Force
     }
     Copy-Item (Join-Path $PSScriptRoot 'NAudio-LICENSE.txt') $InstallPath -Force
-    Write-Host 'MP3 update installed. Open HourNerd and use Save MP3 on the now-playing screen.'
+    Write-Host 'Update installed. Open HourNerd. Use Settings for separate Pandora and Spotify accounts, or choose Spotify from the service dropdown.'
     Write-Host "Backup: $backup"
 }catch{Write-Host $_.Exception.Message -ForegroundColor Red;exit 1}
 

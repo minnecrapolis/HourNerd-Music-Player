@@ -20,10 +20,10 @@ try {
     $script=(Get-Content (Join-Path $PSScriptRoot 'hournerd-bridge.js') -Raw).Replace('__HOURNERD_BRIDGE_KEY__',$key)
     [IO.File]::WriteAllText((Join-Path $extensions 'hournerd-bridge.js'),$script,(New-Object Text.UTF8Encoding($false)))
     Copy-Item (Join-Path $PSScriptRoot 'adblock.js') (Join-Path $extensions 'hournerd-adblock.js') -Force
-    Run-Spicetify @('config','extensions','hournerd-bridge.js-','hournerd-adblock.js-')
-    Run-Spicetify @('config','extensions','hournerd-bridge.js')
-    Run-Spicetify @('config','extensions','hournerd-adblock.js')
-    Run-Spicetify @('backup','apply')
+    Run-Spicetify -Arguments @('config','extensions','hournerd-bridge.js-','hournerd-adblock.js-')
+    Run-Spicetify -Arguments @('config','extensions','hournerd-bridge.js')
+    Run-Spicetify -Arguments @('config','extensions','hournerd-adblock.js')
+    Run-Spicetify -Arguments @('backup','apply')
     Write-Host 'Setup finished. Leave Spotify running and return to HourNerd.'
     Write-Host "Your previous configuration is backed up in $backup"
 }catch{Write-Host $_.Exception.Message -ForegroundColor Red;exit 1}

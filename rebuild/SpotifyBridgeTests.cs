@@ -17,7 +17,17 @@ class SpotifyBridgeTests
                 byte[] bytes=Encoding.UTF8.GetBytes(body);
                 string head=method+" /exchange HTTP/1.1\r\nHost: "+(host??"127.0.0.1:"+port)+"\r\nOrigin: "+origin+"\r\nContent-Type: application/json\r\nX-HourNerd-Bridge: "+key+"\r\nContent-Length: "+bytes.Length+"\r\n\r\n";
                 byte[] h=Encoding.ASCII.GetBytes(head);stream.Write(h,0,h.Length);stream.Write(bytes,0,bytes.Length);
-                using(var reader=new StreamReader(stream))return reader.ReadToEnd();
+                using(var reader=new StreamReader(stream)){
+                    var response=new StringBuilder();string line;int contentLength=0;
+                    while((line=reader.ReadLine())!=null){
+                        response.Append(line).Append("\r\n");
+                        if(line.StartsWith("Content-Length:",StringComparison.OrdinalIgnoreCase))contentLength=int.Parse(line.Substring(15).Trim());
+                        if(line.Length==0)break;
+                    }
+                    char[] content=new char[contentLength];int count=0;
+                    while(count<content.Length){int received=reader.Read(content,count,content.Length-count);if(received==0)throw new Exception("Incomplete HTTP body");count+=received;}
+                    response.Append(content);return response.ToString();
+                }
             }
         }
     }
