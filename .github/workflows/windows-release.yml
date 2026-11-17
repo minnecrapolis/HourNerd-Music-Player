@@ -59,7 +59,7 @@ jobs:
 
       - name: Verify real MSI install and uninstall
         run: |
-          & '.\rebuild\Test-MsiInstall.ps1' -MsiPath ".\dist\HourNerd-Music-Player-$env:PRODUCT_VERSION-Setup.msi"
+          & '.\rebuild\Test-MsiInstall.ps1' -FullUI -MsiPath ".\dist\HourNerd-Music-Player-$env:PRODUCT_VERSION-Setup.msi"
 
       - name: Retain validated audio repair DLL
         uses: actions/upload-artifact@v4
