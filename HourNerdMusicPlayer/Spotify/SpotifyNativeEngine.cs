@@ -22,6 +22,7 @@ namespace HourNerdMusicPlayer.Spotify
     {
         private readonly object gate = new object();
         private Process process;
+        private StreamWriter input;
         private SpotifySnapshot snapshot = new SpotifySnapshot();
         private string status = "Sign in to Spotify to begin.";
         private bool disposed;
@@ -55,7 +56,7 @@ namespace HourNerdMusicPlayer.Spotify
                 child.ErrorDataReceived+=(s,e)=>{}; // Never log upstream tokens or signed stream URLs.
                 child.Exited+=(s,e)=>{lock(gate){if(!disposed&&object.ReferenceEquals(process,s)){snapshot.connected=false;snapshot.playing=false;status="The native Spotify engine stopped. Sign in again to restart it.";}}};
                 lock(gate)process=child;
-                child.Start();child.BeginOutputReadLine();child.BeginErrorReadLine();
+                child.Start();input=new StreamWriter(child.StandardInput.BaseStream,new UTF8Encoding(false)){AutoFlush=true};child.BeginOutputReadLine();child.BeginErrorReadLine();
             } catch { lock(gate){process=null;status="The native Spotify engine could not start. This Windows test build needs 64-bit Windows.";} }
         }
         private void Receive(object sender,DataReceivedEventArgs args)
@@ -84,7 +85,7 @@ namespace HourNerdMusicPlayer.Spotify
         }
         private bool Send(string name,string value="")
         {
-            try { lock(gate){if(disposed||process==null||process.HasExited)return false;process.StandardInput.WriteLine(new JavaScriptSerializer().Serialize(new {name,value}));process.StandardInput.Flush();return true;} }
+            try { lock(gate){if(disposed||process==null||process.HasExited)return false;input.WriteLine(new JavaScriptSerializer().Serialize(new {name,value}));input.Flush();return true;} }
             catch { lock(gate)status="The native Spotify connection stopped. Sign in again.";return false; }
         }
         public bool Command(string name,string value="")
@@ -97,7 +98,7 @@ namespace HourNerdMusicPlayer.Spotify
         {
             Process child;lock(gate){child=process;process=null;snapshot.connected=false;snapshot.playing=false;}
             if(child==null)return;
-            try{child.StandardInput.Close();if(!child.WaitForExit(700))child.Kill();}catch{}finally{child.Dispose();}
+            try{if(input!=null){input.Close();input=null;}if(!child.WaitForExit(700))child.Kill();}catch{}finally{child.Dispose();}
         }
         public void SignIn(){Stop();try{if(File.Exists(credentials))File.Delete(credentials);}catch{}Start();if(Send("connect")){lock(gate)status="Starting Spotify sign-in…";}}
         public void SignOut(){Stop();try{if(File.Exists(credentials))File.Delete(credentials);}catch{}lock(gate){snapshot=new SpotifySnapshot();status="Signed out of Spotify.";}}
