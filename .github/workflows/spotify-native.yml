@@ -1,0 +1,60 @@
+name: Standalone Spotify native engine
+on:
+  push:
+    branches: [spotify-standalone, mp3-export]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: spotify-native-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    env:
+      RUSTFLAGS: -C target-feature=+crt-static
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native-spotify
+          cache-on-failure: true
+          cache-workspace-crates: true
+      - name: Build native Spotify playback engine
+        working-directory: native-spotify
+        run: cargo build --release --locked --target x86_64-pc-windows-msvc
+      - name: Verify music-only queues and unrestricted local skipping
+        working-directory: native-spotify
+        run: cargo test --release --locked --target x86_64-pc-windows-msvc
+      - name: Verify native process protocol without an account
+        shell: powershell
+        run: .\rebuild\Test-SpotifyNativeProtocol.ps1
+      - name: Build Windows player and regression checks
+        shell: powershell
+        run: .\Build-HourNerdMusicPlayer.ps1 -Test
+      - name: Verify MP3 export
+        shell: powershell
+        run: .\rebuild\Test-MP3Export.ps1
+      - name: Verify native standalone UI and account separation
+        shell: powershell
+        run: .\rebuild\Test-SpotifyUI.ps1
+      - name: Package standalone update
+        shell: powershell
+        run: .\Build-Spotify-Update.ps1
+      - name: Verify update installation and preservation of existing audio repair
+        shell: powershell
+        run: .\rebuild\Test-SpotifyUpdate.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HourNerd-Windows-Spotify-standalone-test
+          path: dist/spotify-standalone/*
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Spotify-native-build-evidence
+          path: |
+            native-spotify/Cargo.lock
+            spotify-preview.png
+          retention-days: 14
