@@ -11,7 +11,7 @@ using System.Windows.Threading;
 using HourNerdMusicPlayer;
 class SpotifyUiTests
 {
-    static App app;
+    static Application app;
     static DispatcherTimer timer;
     static int stage, attempts;
     static MainWindow window;
@@ -38,6 +38,8 @@ class SpotifyUiTests
     }
     static void Tick(object sender,EventArgs args) {
         try {
+            var layout=(FrameworkElement)window.Content;
+            layout.Measure(new Size(1180,760));layout.Arrange(new Rect(0,0,1180,760));layout.UpdateLayout();
             if(++attempts>90)throw new Exception("Timed out waiting for native UI startup");
             if(stage==0){
                 window.UpdateLayout();
@@ -80,8 +82,15 @@ class SpotifyUiTests
     [STAThread] static int Main() {
         try {
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
-            app=new App();app.Init();
-            app.StartupUri=null;
+            app=new Application();
+            var resources=new System.Xml.XmlDocument();
+            resources.Load(Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"..","..","App.xaml")));
+            foreach(System.Xml.XmlNode node in resources.SelectNodes("//*[local-name()='ResourceDictionary'][@Source]")) {
+                string source=node.Attributes["Source"].Value;
+                if(!source.StartsWith("/")&&!source.StartsWith("pack:"))source="/HourNerdMusicPlayer;component/"+source;
+                app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source=new Uri(source,UriKind.RelativeOrAbsolute) });
+            }
+            MainWindow.SetCommandLine(new CommandLineOptions());
             // Exercise actual WPF controls without starting native audio or requiring a desktop session.
             window=new MainWindow();
             var settings=(Settings)Activator.CreateInstance(typeof(Settings),new object[]{null,Field("_config"),null});
