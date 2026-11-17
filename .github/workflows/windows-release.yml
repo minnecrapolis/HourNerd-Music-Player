@@ -53,6 +53,10 @@ jobs:
           if (!(Test-Path -LiteralPath $compiler)) { throw 'Inno Setup 6 was not found on the Windows runner.' }
           & '.\Build-Windows-Installers.ps1' -CompilerPath $compiler
 
+      - name: Verify real MSI installation dialogs
+        run: |
+          & '.\rebuild\Test-MsiUi.ps1' -MsiPath ".\dist\HourNerd-Music-Player-$env:PRODUCT_VERSION-Setup.msi"
+
       - name: Retain validated audio repair DLL
         uses: actions/upload-artifact@v4
         with:
@@ -93,6 +97,7 @@ jobs:
             dist/*-Setup.exe
             dist/*-Setup.msi
             dist/*-Source.zip
+            dist/*-Windows.zip
             dist/SHA256SUMS.txt
 
       - name: Retain build diagnostics on failure
