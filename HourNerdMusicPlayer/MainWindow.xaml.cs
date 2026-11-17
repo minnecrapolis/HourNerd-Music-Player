@@ -229,7 +229,7 @@ namespace HourNerdMusicPlayer
             {
                 if (_spotifyPage != null) _spotifyPage.SetActive(false);
                 SidebarSearch.IsEnabled = true; SidebarLibraryHeading.Text = "YOUR STATIONS"; SidebarSearchHint.Text = "Search stations"; SidebarService.Text = "PANDORA"; btnLogout.Content = "Sign out";
-                if (_player != null && _player.LoggedIn) ShowLibraryHome(); else ShowPage(_loginPage ?? _loadingPage);
+                if (_player != null && _player.LoggedIn) ShowLibraryHome(); else ShowPage((UserControl)_loginPage ?? _loadingPage);
             }
             System.Windows.Input.CommandManager.InvalidateRequerySuggested();
         }

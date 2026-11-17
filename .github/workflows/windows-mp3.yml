@@ -20,6 +20,8 @@ jobs:
         run: .\rebuild\Test-MP3Export.ps1
       - name: Verify local Spotify bridge
         run: .\rebuild\Test-SpotifyBridge.ps1
+      - name: Verify native service selector
+        run: .\rebuild\Test-SpotifyUI.ps1
       - name: Verify Spotify extension commands
         run: node spotify/bridge.test.cjs
       - name: Prepare complete Spotify test update
@@ -30,3 +32,8 @@ jobs:
           path: dist/spotify-update/*
           if-no-files-found: error
           retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Spotify-UI-preview
+          path: spotify-preview.png
+          retention-days: 7
