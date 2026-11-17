@@ -1,7 +1,7 @@
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot
 $process=New-Object Diagnostics.Process
-$process.StartInfo.FileName=Join-Path $root 'native-spotify\target\release\hournerd-spotify.exe'
+$process.StartInfo.FileName=Join-Path $root 'native-spotify\target\x86_64-pc-windows-msvc\release\hournerd-spotify.exe'
 $process.StartInfo.UseShellExecute=$false
 $process.StartInfo.CreateNoWindow=$true
 $process.StartInfo.RedirectStandardInput=$true

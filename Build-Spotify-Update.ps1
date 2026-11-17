@@ -6,7 +6,7 @@ $out=Join-Path $PSScriptRoot 'dist\spotify-standalone'
 if(Test-Path $out){Remove-Item $out -Recurse -Force}
 New-Item -ItemType Directory (Join-Path $out 'Spotify') -Force | Out-Null
 foreach($name in @('HourNerdMusicPlayer.exe','NAudio.Core.dll','NAudio.Wasapi.dll')){Copy-Item (Join-Path $PSScriptRoot "HourNerdMusicPlayer\bin\Release\$name") $out}
-Copy-Item 'native-spotify\target\release\hournerd-spotify.exe' (Join-Path $out 'Spotify')
+Copy-Item 'native-spotify\target\x86_64-pc-windows-msvc\release\hournerd-spotify.exe' (Join-Path $out 'Spotify')
 Copy-Item 'native-spotify\README.txt' (Join-Path $out 'Spotify\SPOTIFY-README.txt')
 Copy-Item 'native-spotify\LIBRESPOT-LICENSE.txt' (Join-Path $out 'Spotify')
 '{"engine":"native","protocol":1,"build":"1.2.0-standalone-test"}' | Set-Content (Join-Path $out 'Spotify\standalone.json') -Encoding UTF8
