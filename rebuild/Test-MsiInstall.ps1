@@ -14,7 +14,7 @@ try {
 using System;
 using System.Runtime.InteropServices;
 public static class MsiButtonClick {
- [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, uint message, IntPtr w, IntPtr l);
+ [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint message, IntPtr w, IntPtr l);
 }
 '@
         $process = Start-Process -FilePath $msiexec -ArgumentList ('/i "{0}" /norestart /L*v "{1}"' -f $MsiPath,$logs) -PassThru
@@ -33,12 +33,9 @@ public static class MsiButtonClick {
                         if ($control.Current.ControlType -ne [System.Windows.Automation.ControlType]::Button -or !$control.Current.IsEnabled) { continue }
                         if ($control.Current.Name -notmatch '^&?(Install|Finish|OK)$') { continue }
                         Write-Host "Invoking MSI button: $($control.Current.Name)"
-                        $pattern = $null
-                        if ($control.TryGetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern,[ref]$pattern)) {
-                            ([System.Windows.Automation.InvokePattern]$pattern).Invoke()
-                        } elseif ($control.Current.NativeWindowHandle) {
-                            [MsiButtonClick]::SendMessage([IntPtr]$control.Current.NativeWindowHandle,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero) | Out-Null
-                        }
+                        if ($control.Current.NativeWindowHandle) {
+                            [MsiButtonClick]::PostMessage([IntPtr]$control.Current.NativeWindowHandle,0x00F5,[IntPtr]::Zero,[IntPtr]::Zero) | Out-Null
+                        } else { throw 'MSI button has no native window handle.' }
                         break
                     }
                 } catch [System.Windows.Automation.ElementNotAvailableException] { }
