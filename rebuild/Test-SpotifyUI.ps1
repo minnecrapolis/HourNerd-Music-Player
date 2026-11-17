@@ -11,11 +11,21 @@ try{
     }
     if(!$window){throw 'Player window did not appear.'}
     function Find-Name([string]$name){$window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,(New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty,$name)))}
+    function Find-ServiceItem([string]$name){
+        $conditions=[System.Windows.Automation.Condition[]]@(
+            (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty,$name)),
+            (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty,$process.Id)),
+            (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::IsSelectionItemPatternAvailableProperty,$true))
+        )
+        $condition=New-Object System.Windows.Automation.AndCondition(,$conditions)
+        [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$condition)
+    }
+
     $combo=$window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,(New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::AutomationIdProperty,'MusicService')))
     if(!$combo){throw 'The music service dropdown was not found.'}
     $expand=$combo.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
     $expand.Expand();Start-Sleep -Milliseconds 300
-    $spotify=Find-Name 'Spotify'
+    $spotify=Find-ServiceItem 'Spotify'
     if(!$spotify){throw 'Spotify was not available in the dropdown.'}
     $spotify.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select();$expand.Collapse()
     Start-Sleep -Milliseconds 1200
@@ -41,12 +51,12 @@ try{
     }
     Write-Host 'PASS Settings offers separate Pandora and Spotify account controls'
     $expand.Expand();Start-Sleep -Milliseconds 300
-    $pandora=Find-Name 'Pandora' ;$pandora.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select();$expand.Collapse()
+    $pandora=Find-ServiceItem 'Pandora' ;$pandora.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select();$expand.Collapse()
     Start-Sleep -Milliseconds 500
     if(!(Find-Name 'YOUR STATIONS')){throw 'Switching back did not restore Pandora sidebar.'}
     Write-Host 'PASS selecting Pandora restores its station interface'
     $expand.Expand();Start-Sleep -Milliseconds 300
-    $spotify=Find-Name 'Spotify';$spotify.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select();$expand.Collapse()
+    $spotify=Find-ServiceItem 'Spotify';$spotify.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select();$expand.Collapse()
     Start-Sleep -Milliseconds 500
     $sidebar=$window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,(New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::AutomationIdProperty,'SidebarStationList')))
     $playlist=$sidebar.FindFirst([System.Windows.Automation.TreeScope]::Descendants,(New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty,'Fixture playlist')))
