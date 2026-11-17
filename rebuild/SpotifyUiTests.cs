@@ -79,8 +79,8 @@ class SpotifyUiTests
     [STAThread] static int Main() {
         try {
             Directory.SetCurrentDirectory(AppDomain.CurrentDomain.BaseDirectory);
-            Application.ResourceAssembly=typeof(App).Assembly;
             app=new App();app.Init();
+            app.StartupUri=new Uri("pack://application:,,,/HourNerdMusicPlayer;component/MainWindow.xaml",UriKind.Absolute);
             app.DispatcherUnhandledException+=(s,e)=>{Console.Error.WriteLine(e.Exception);Console.Error.Flush();Environment.Exit(1);};
             timer=new DispatcherTimer { Interval=TimeSpan.FromMilliseconds(500) };timer.Tick+=Tick;timer.Start();
             app.Run();return 1;
