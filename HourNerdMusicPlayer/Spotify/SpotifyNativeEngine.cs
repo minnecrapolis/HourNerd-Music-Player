@@ -90,7 +90,7 @@ namespace HourNerdMusicPlayer.Spotify
         public bool Command(string name,string value="")
         {
             if(!new HashSet<string>{"play","pause","toggle","next","previous","library","search","playUri"}.Contains(name)||value==null||value.Length>200)return false;
-            if(name=="playUri"&&!SpotifyBridge.ValidUri(value))return false;
+            if(name=="playUri"&&!SpotifyUris.Valid(value))return false;
             return Connected&&Send(name,value);
         }
         private void Stop()

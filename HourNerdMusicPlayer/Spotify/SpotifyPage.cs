@@ -79,7 +79,7 @@ namespace HourNerdMusicPlayer.Spotify
             play.Content=snapshot.playing?"Pause":"Play";
             duration.Text=Clock(snapshot.position)+" / "+Clock(snapshot.duration);
             adblock.Text="Music-only queue · Explicit ad entries filtered · No HourNerd skip quota";
-            var rows=(snapshot.entries??new SpotifyEntry[0]).Where(e=>e!=null&&!string.IsNullOrEmpty(e.Name)&&SpotifyBridge.ValidUri(e.uri)).Take(100).ToArray();
+            var rows=(snapshot.entries??new SpotifyEntry[0]).Where(e=>e!=null&&!string.IsNullOrEmpty(e.Name)&&SpotifyUris.Valid(e.uri)).Take(100).ToArray();
             string signature=string.Join("|",rows.Select(e=>e.uri+e.Name));
             if(signature!=entriesSignature){var selected=results.SelectedItem as SpotifyEntry;results.ItemsSource=rows;if(selected!=null)results.SelectedItem=rows.FirstOrDefault(e=>e.uri==selected.uri);entriesSignature=signature;if(EntriesChanged!=null)EntriesChanged(rows); }
             string image=snapshot.artwork??"";

@@ -133,7 +133,7 @@
     </Compile>
     <Compile Include="OptionalUserLogging.cs" />
     <Compile Include="MP3Exporter.cs" />
-    <Compile Include="Spotify\SpotifyBridge.cs" />
+    <Compile Include="Spotify\SpotifyModels.cs" />
     <Compile Include="Spotify\SpotifyPage.cs" />
     <Compile Include="Spotify\SpotifyNativeEngine.cs" />
     <Compile Include="Pages\HistoryPage.xaml.cs">

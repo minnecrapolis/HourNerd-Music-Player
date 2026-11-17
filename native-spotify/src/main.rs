@@ -83,6 +83,12 @@ impl Engine {
   }Ok(())
  }
  fn event(&mut self,event:PlayerEvent)->Result<()> {
+  // An end/position callback from a retired track must not alter the new queue item.
+  let event_uri=match &event {
+   PlayerEvent::Playing{track_id,..}|PlayerEvent::Paused{track_id,..}|PlayerEvent::Stopped{track_id,..}|PlayerEvent::PositionChanged{track_id,..}|PlayerEvent::PositionCorrection{track_id,..}|PlayerEvent::EndOfTrack{track_id,..}|PlayerEvent::Unavailable{track_id,..}=>Some(track_id.to_uri()),
+   PlayerEvent::TrackChanged{audio_item}=>Some(audio_item.uri.clone()),_=>None
+  };
+  if event_uri.as_deref().is_some_and(|uri|self.queue.current()!=Some(uri)){return Ok(());}
   match event {
    PlayerEvent::Playing{position_ms,..}=>{self.snapshot["playing"]=json!(true);self.snapshot["position"]=json!(position_ms as f64/1000.);self.snapshot["error"]=json!("");},
    PlayerEvent::Paused{position_ms,..}=>{self.snapshot["playing"]=json!(false);self.snapshot["position"]=json!(position_ms as f64/1000.);},
