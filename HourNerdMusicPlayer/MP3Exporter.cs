@@ -1,6 +1,7 @@
 // HourNerd, GPL-3.0-or-later. NAudio is used under its MIT license.
 using System;
 using System.IO;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,7 +18,7 @@ namespace HourNerdMusicPlayer
             if (value.Length == 0) return "Pandora song";
             return value.Substring(0, Math.Min(110, value.Length));
         }
-        internal static async Task SaveAsync(string audioUrl, string destination, IProgress<string> progress, CancellationToken cancellation)
+        internal static async Task SaveAsync(string audioUrl, string destination, IProgress<string> progress, CancellationToken cancellation, HttpMessageHandler transport = null)
         {
             Uri uri;
             if (!Uri.TryCreate(audioUrl, UriKind.Absolute, out uri) || (uri.Scheme != "https" && uri.Scheme != "http"))
@@ -26,31 +27,7 @@ namespace HourNerdMusicPlayer
             string partial = Path.Combine(Path.GetDirectoryName(destination), ".HourNerd-" + Guid.NewGuid().ToString("N") + ".mp3");
             try
             {
-                using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
-                using (var client = new HttpClient())
-                {
-                    timeout.CancelAfter(TimeSpan.FromMinutes(3));
-                    progress.Report("Downloading song…");
-                    using (var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false))
-                    {
-                        if (response.StatusCode != System.Net.HttpStatusCode.OK)
-                            throw new InvalidOperationException("Pandora did not provide a downloadable song. Try while the song is still playing.");
-                        if (response.Content.Headers.ContentLength.GetValueOrDefault() > 100L * 1024 * 1024)
-                            throw new InvalidOperationException("This audio download is too large to save.");
-                        using (var source = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                        using (var output = new FileStream(input, FileMode.CreateNew, FileAccess.Write, FileShare.None, 32768, true))
-                        {
-                            byte[] buffer = new byte[32768]; int count; long size = 0;
-                            while ((count = await source.ReadAsync(buffer, 0, buffer.Length, timeout.Token).ConfigureAwait(false)) > 0)
-                            {
-                                size += count;
-                                if (size > 100L * 1024 * 1024) throw new InvalidOperationException("This audio download is too large to save.");
-                                await output.WriteAsync(buffer, 0, count, timeout.Token).ConfigureAwait(false);
-                            }
-                            if (size == 0) throw new InvalidOperationException("The audio download is empty.");
-                        }
-                    }
-                }
+                await DownloadAsync(uri, input, progress, cancellation, transport).ConfigureAwait(false);
                 cancellation.ThrowIfCancellationRequested();
                 progress.Report("Preparing MP3…");
                 string typed = input + DetectExtension(input);
@@ -61,12 +38,82 @@ namespace HourNerdMusicPlayer
                 else File.Move(partial, destination);
                 progress.Report("MP3 saved");
             }
-            catch (HttpRequestException) { throw new InvalidOperationException("The song could not download. Its stream may have expired. Try while it is still playing."); }
             finally
             {
                 try { if (File.Exists(input)) File.Delete(input); } catch { }
                 try { if (File.Exists(partial)) File.Delete(partial); } catch { }
             }
+        }
+        internal static async Task DownloadAsync(Uri uri, string input, IProgress<string> progress, CancellationToken cancellation, HttpMessageHandler transport = null)
+        {
+            var urls = new Queue<Uri>();
+            if (uri.Scheme == "http") { var secure = new UriBuilder(uri) { Scheme = "https", Port = uri.IsDefaultPort ? -1 : uri.Port }; urls.Enqueue(secure.Uri); }
+            urls.Enqueue(uri);
+            string last = "The song could not download.";
+            bool retried = false; int attempt = 0;
+            using (var total = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
+            using (var client = new HttpClient(transport ?? new HttpClientHandler()))
+            {
+                total.CancelAfter(TimeSpan.FromMinutes(4));
+                client.Timeout = Timeout.InfiniteTimeSpan;
+                while (urls.Count > 0 && attempt < 3)
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    Uri current = urls.Dequeue(); attempt++;
+                    progress.Report(attempt == 1 ? "Downloading song…" : "Retrying download connection…");
+                    using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(total.Token))
+                    {
+                        timeout.CancelAfter(TimeSpan.FromSeconds(90));
+                        try
+                        {
+                            using (var response = await client.GetAsync(current, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false))
+                            {
+                                int code = (int)response.StatusCode;
+                                if (code != 200)
+                                {
+                                    if (code == 429) throw new InvalidOperationException("The audio server is limiting downloads. Wait before trying again.");
+                                    last = code == 401 || code == 403 || code == 404 || code == 410
+                                        ? "The audio server rejected the link (HTTP " + code + "). It may have expired. Try a newly playing song."
+                                        : "The audio server returned HTTP " + code + ". Please try again.";
+                                    if (code >= 500 && code <= 599 && !retried) { urls.Enqueue(current); retried = true; }
+                                    continue;
+                                }
+                                if (response.Content.Headers.ContentLength.GetValueOrDefault() > 100L * 1024 * 1024)
+                                    throw new InvalidOperationException("This audio download is too large to save.");
+                                string type = response.Content.Headers.ContentType == null ? "" : response.Content.Headers.ContentType.MediaType;
+                                if (type.StartsWith("text/", StringComparison.OrdinalIgnoreCase) || type.IndexOf("json", StringComparison.OrdinalIgnoreCase) >= 0)
+                                    throw new InvalidOperationException("The audio server returned a web page instead of a song.");
+                                using (var source = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+                                using (var output = new FileStream(input, FileMode.Create, FileAccess.Write, FileShare.None, 32768, true))
+                                {
+                                    byte[] buffer = new byte[32768]; int count; long size = 0;
+                                    while ((count = await source.ReadAsync(buffer, 0, buffer.Length, timeout.Token).ConfigureAwait(false)) > 0)
+                                    {
+                                        size += count;
+                                        if (size > 100L * 1024 * 1024) throw new InvalidOperationException("This audio download is too large to save.");
+                                        await output.WriteAsync(buffer, 0, count, timeout.Token).ConfigureAwait(false);
+                                    }
+                                    if (size == 0) throw new InvalidOperationException("The audio download is empty.");
+                                }
+                                return;
+                            }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            if (cancellation.IsCancellationRequested) throw;
+                            last = "The audio download timed out. Check your connection and try Save MP3 again.";
+                            if (total.IsCancellationRequested) break;
+                            if (!retried) { urls.Enqueue(current); retried = true; }
+                        }
+                        catch (HttpRequestException)
+                        {
+                            last = "The connection to the audio server failed. Check your connection and try Save MP3 again.";
+                            if (!retried) { urls.Enqueue(current); retried = true; }
+                        }
+                    }
+                }
+            }
+            throw new InvalidOperationException(last);
         }
         internal static string DetectExtension(string path)
         {
@@ -106,3 +153,4 @@ namespace HourNerdMusicPlayer
         }
     }
 }
+

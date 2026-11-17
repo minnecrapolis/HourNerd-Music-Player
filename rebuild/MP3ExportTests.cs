@@ -1,6 +1,9 @@
 using System;
 using System.IO;
 using System.Threading;
+using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
 using NAudio.Wave;
 using HourNerdMusicPlayer;
 class MP3ExportTests
@@ -24,7 +27,34 @@ class MP3ExportTests
             var cancellation=new CancellationTokenSource();cancellation.Cancel();bool cancelled=false;try{MP3Exporter.ConvertFile(wav,Path.Combine(folder,"cancel.mp3"),cancellation.Token);}catch(OperationCanceledException){cancelled=true;}
             if(!cancelled)throw new Exception("Cancellation ignored");
             if(MP3Exporter.SafeName("../invalid: name/?").Contains("/"))throw new Exception("Unsafe filename");
-            Console.WriteLine("PASS cancellation and filename safety");return 0;
+            Console.WriteLine("PASS cancellation and filename safety");
+            var handler=new RetryFixture(File.ReadAllBytes(aac),false);
+            string downloaded=Path.Combine(folder,"downloaded.mp3");
+            MP3Exporter.SaveAsync("https://audio.example/file?token=a%2Bb%26c",downloaded,new Progress<string>(_=>{}),CancellationToken.None,handler).GetAwaiter().GetResult();
+            if(handler.Calls!=2 || MP3Exporter.DetectExtension(downloaded)!=".mp3")throw new Exception("Transient failure did not retry into a valid MP3");
+            Console.WriteLine("PASS interrupted download retries and produces a verified MP3");
+            var limited=new RetryFixture(File.ReadAllBytes(aac),true);bool rateLimited=false;
+            try{MP3Exporter.SaveAsync("https://audio.example/file",Path.Combine(folder,"limited.mp3"),new Progress<string>(_=>{}),CancellationToken.None,limited).GetAwaiter().GetResult();}catch(InvalidOperationException e){rateLimited=e.Message.Contains("limiting");}
+            if(!rateLimited || limited.Calls!=1 || File.Exists(Path.Combine(folder,"limited.mp3")))throw new Exception("Rate limit should stop without a file");
+            Console.WriteLine("PASS rate limits stop without retry or a partial destination");return 0;
         } catch(Exception error){Console.Error.WriteLine(error);return 1;}finally{try{Directory.Delete(folder,true);}catch{}}
+    }
+}
+
+
+class RetryFixture:HttpMessageHandler
+{
+    public int Calls;
+    private readonly byte[] audio;
+    private readonly bool limited;
+    public RetryFixture(byte[] audio,bool limited){this.audio=audio;this.limited=limited;}
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken cancellation)
+    {
+        Calls++;
+        if(!limited&&Calls==1)throw new HttpRequestException("fixture network interruption");
+        var response=new HttpResponseMessage(limited?(HttpStatusCode)429:HttpStatusCode.OK);
+        response.Content=new ByteArrayContent(audio);
+        response.Content.Headers.ContentType=new System.Net.Http.Headers.MediaTypeHeaderValue("audio/mp4");
+        return Task.FromResult(response);
     }
 }
