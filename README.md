@@ -1,6 +1,6 @@
 # HourNerd Music Player
 
-A Windows desktop Pandora player maintained by **Chris Dahlkvist / HourNerd**,
+A Windows/IOS/Android/Mac/Amazon Echo/LG TV Pandora and Spotify player maintained by **Chris Dahlkvist / HourNerd**,
 based on **Elpis** by Adam Haile and its contributors.
 
 ## Credits and licenses
