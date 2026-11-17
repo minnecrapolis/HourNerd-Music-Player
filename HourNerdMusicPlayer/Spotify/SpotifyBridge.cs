@@ -27,12 +27,11 @@ namespace HourNerdMusicPlayer.Spotify
     }
     internal sealed class SpotifyEntry
     {
-        public string name { get; set; }
+        public string Name { get; set; }
         public string detail { get; set; }
         public string uri { get; set; }
-        public string Name { get { return name; } }
         public byte[] ArtImage { get { return null; } }
-        public override string ToString() { return name + (string.IsNullOrEmpty(detail) ? "" : " — " + detail); }
+        public override string ToString() { return Name + (string.IsNullOrEmpty(detail) ? "" : " — " + detail); }
     }
     internal sealed class SpotifyBridge : IDisposable
     {

@@ -42,6 +42,8 @@ class SpotifyBridgeTests
             Check(!bridge.Command("next"),"no commands queued before a live client connects");
             string response=Post(port,"https://xpui.app.spotify.com",Key,"{\"title\":\"Fixture song\",\"playing\":true}");
             Check(response.StartsWith("HTTP/1.1 200")&&bridge.Connected&&bridge.Snapshot.title=="Fixture song","authenticated Spotify snapshot accepted");
+            response=Post(port,"https://xpui.app.spotify.com",Key,"{\"entries\":[{\"name\":\"Fixture playlist\",\"uri\":\"spotify:playlist:1234567890123456789012\"}]}");
+            Check(response.StartsWith("HTTP/1.1 200")&&bridge.Snapshot.entries.Length==1&&bridge.Snapshot.entries[0].Name=="Fixture playlist","lowercase Spotify playlist names deserialize without a property collision");
             Check(!bridge.Command("execute","powershell")&&!bridge.Command("playUri","file:///secret"),"arbitrary execution and non-Spotify URIs rejected");
             for(int i=0;i<40;i++){Check(bridge.Command("next"),"next command accepted "+i);response=Post(port,"https://xpui.app.spotify.com",Key,"{}");if(!response.Contains("\"name\":\"next\""))throw new Exception("next command was not returned");}
             response=Post(port,"https://xpui.app.spotify.com",Key,"{}");Check(!response.Contains("\"name\":\"next\""),"commands delivered once without a skip counter");

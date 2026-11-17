@@ -69,6 +69,7 @@ class SpotifyUiTests
             }
             if(stage==4){
                 Check(Text("YOUR STATIONS"),"switching to Pandora restores its station interface");
+                Check(((ListBox)window.FindName("SidebarStationList")).Items.Count==0,"signed-out Pandora does not display Spotify playlists");
                 services.SelectedIndex=1;stage++;return;
             }
             if(stage==5){
