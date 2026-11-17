@@ -1,34 +1,22 @@
-HourNerd Music Player - Pandora MP3 export test update
-
-For an EXISTING working Windows HourNerd Music Player installation.
+HourNerd Music Player - Windows Spotify test update
 
 1. Extract the entire ZIP.
-2. Close the player completely, including the tray icon.
-3. Run Apply-MP3-Update.cmd.
-4. Open HourNerd, play a Pandora song, and click Save MP3... at the top
-   of Now Playing. Choose a destination folder. Playback continues.
+2. Close HourNerd completely, including its tray icon.
+3. Run Apply-MP3-Update.cmd. It backs up your existing EXE and adds the Spotify
+   setup files. The installed Pandora and audio repair DLLs are preserved.
+4. Open HourNerd and choose Spotify in the dropdown above your station list.
+5. Click Set up Spotify once, with the Spotify desktop app already installed
+   and signed in. Leave Spotify running for audio, then use HourNerd.
 
-The same command is also in the song menu. The selected song is captured
-when you click Save; changing songs does not change the download target.
+See Spotify\SPOTIFY-README.txt for details, dependencies and removal.
+Pandora and Save MP3 remain available by switching the dropdown to Pandora.
+The beer tip button is preserved in the private build.
 
-This update replaces the main EXE and adds two NAudio DLLs. It keeps the
-existing audio repair and Pandora connection DLLs. It does not install a
-new Pandora client configuration. A backup folder is created first.
-To roll back: close HourNerd, restore HourNerdMusicPlayer.exe from that
-backup, and remove NAudio.Core.dll/NAudio.Wasapi.dll if they were newly added.
-Custom installation folder: run Apply-MP3-Update.ps1 -InstallPath 'YOUR FOLDER'.
+The Spotify integration is a test build. Automated bridge and playback-command
+fixtures passed; live account playback, ad blocking and repeated skips still
+need testing. Spotify server restrictions and ads embedded inside recordings
+are not guaranteed to be removable. HourNerd adds no local skip quota.
 
-AAC streams are converted to genuine MP3 at 192 kbps with Windows Media
-Foundation; MP3 streams are preserved directly. Conversion does not increase
-the quality of the source stream. Expired URLs, unavailable codecs, and
-non-audio responses show a download error without changing playback.
-Temporary/partial files are removed. Music is saved only when requested.
-
-Conversion and decoding tests use generated audio, not Pandora content.
-Live Pandora export on the owner's computer still needs verification.
-Source and third-party notices are in the repository's mp3-export branch.
-NAudio: Copyright Mark Heath and contributors, MIT license included.
-
-This build also adds Buy the developer a beer in the sidebar, with Cash App
-and Zelle instructions using the payment email shown in the app and a copy-email button.
-
+To roll back: close HourNerd, restore HourNerdMusicPlayer.exe from the newest
+MP3-update-backup folder in the installation directory. Disable the Spotify
+extensions with Spotify\Remove-Spotify-Bridge.cmd if desired.

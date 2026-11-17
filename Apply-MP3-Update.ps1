@@ -8,8 +8,10 @@ try {
     $hashFile=Join-Path $PSScriptRoot 'SHA256SUMS.txt'
     if(!(Test-Path $hashFile)){throw 'Extract the entire ZIP before applying the update.'}
     foreach($line in Get-Content $hashFile){
-        if($line -notmatch '^([A-Fa-f0-9]{64})\s+([^\\/]+)$'){throw 'Invalid update checksum file.'}
-        if((Get-FileHash (Join-Path $PSScriptRoot $Matches[2]) -Algorithm SHA256).Hash -ne $Matches[1]){throw 'Update verification failed. Download and extract the ZIP again.'}
+        if($line -notmatch '^([A-Fa-f0-9]{64})\s+(.+)$'){throw 'Invalid update checksum file.'}
+        $hash=$Matches[1];$relative=$Matches[2]
+        if([IO.Path]::IsPathRooted($relative) -or $relative -match '(^|[\\/])\.\.([\\/]|$)'){throw 'Invalid update checksum path.'}
+        if((Get-FileHash (Join-Path $PSScriptRoot $relative) -Algorithm SHA256).Hash -ne $hash){throw 'Update verification failed. Download and extract the ZIP again.'}
     }
     $backup=Join-Path $InstallPath ('MP3-update-backup-'+(Get-Date -Format 'yyyyMMdd-HHmmss'))
     New-Item -ItemType Directory $backup | Out-Null
@@ -27,7 +29,14 @@ try {
         foreach($name in $replaced){$original=Join-Path $backup $name;$target=Join-Path $InstallPath $name;if(Test-Path $original){Copy-Item $original $target -Force}else{Remove-Item $target -Force}}
         throw
     }
+    if(Test-Path (Join-Path $PSScriptRoot 'Spotify')){
+        $spotifyTarget=Join-Path $InstallPath 'Spotify'
+        if(Test-Path $spotifyTarget){Copy-Item $spotifyTarget $backup -Recurse}
+        New-Item -ItemType Directory $spotifyTarget -Force | Out-Null
+        Copy-Item (Join-Path $PSScriptRoot 'Spotify\*') $spotifyTarget -Recurse -Force
+    }
     Copy-Item (Join-Path $PSScriptRoot 'NAudio-LICENSE.txt') $InstallPath -Force
     Write-Host 'MP3 update installed. Open HourNerd and use Save MP3 on the now-playing screen.'
     Write-Host "Backup: $backup"
 }catch{Write-Host $_.Exception.Message -ForegroundColor Red;exit 1}
+

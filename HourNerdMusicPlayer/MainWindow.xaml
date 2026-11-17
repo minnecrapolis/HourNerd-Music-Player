@@ -53,7 +53,7 @@
             <Border Grid.Column="0" Background="{DynamicResource HNSidebar}" BorderBrush="{DynamicResource HNBorder}" BorderThickness="0,0,1,0">
                 <Grid Margin="18,18,16,14">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="82" /><RowDefinition Height="78" /><RowDefinition Height="*" />
+                        <RowDefinition Height="82" /><RowDefinition Height="130" /><RowDefinition Height="*" />
                         <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <StackPanel Grid.Row="0">
@@ -66,10 +66,13 @@
                         <TextBlock Text="Your stations. Always within reach." Foreground="{DynamicResource HNMutedText}" FontSize="11" Margin="0,14,0,0" />
                     </StackPanel>
                     <StackPanel Grid.Row="1">
-                        <DockPanel Margin="2,0,0,8"><TextBlock Text="YOUR STATIONS" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource HNMutedText}" /><TextBlock x:Name="SidebarStationCount" Text="0" Foreground="{DynamicResource HNMutedText}" FontSize="11" HorizontalAlignment="Right" /></DockPanel>
+                        <ComboBox x:Name="MusicService" SelectedIndex="0" SelectionChanged="MusicService_SelectionChanged" Margin="0,0,0,10" Padding="8,6" FontSize="14" ToolTip="Choose your music service">
+                            <ComboBoxItem Content="Pandora" /><ComboBoxItem Content="Spotify" />
+                        </ComboBox>
+                        <DockPanel Margin="2,0,0,8"><TextBlock x:Name="SidebarLibraryHeading" Text="YOUR STATIONS" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource HNMutedText}" /><TextBlock x:Name="SidebarStationCount" Text="0" Foreground="{DynamicResource HNMutedText}" FontSize="11" HorizontalAlignment="Right" /></DockPanel>
                         <TextBox x:Name="SidebarSearch" TextChanged="SidebarSearch_TextChanged" ToolTip="Filter stations by name" Height="32"
                                  Background="{DynamicResource HNInput}" Foreground="{DynamicResource HNText}" BorderBrush="{DynamicResource HNBorder}" BorderThickness="1" Padding="9,4" />
-                        <TextBlock Text="Search stations" Foreground="{DynamicResource HNMutedText}" FontSize="10" Margin="2,3,0,0" />
+                        <TextBlock x:Name="SidebarSearchHint" Text="Search stations" Foreground="{DynamicResource HNMutedText}" FontSize="10" Margin="2,3,0,0" />
                     </StackPanel>
                     <Grid Grid.Row="2">
                         <ListBox x:Name="SidebarStationList" SelectionChanged="SidebarStationList_SelectionChanged" IsEnabled="False"
@@ -101,7 +104,7 @@
                     </StackPanel>
                     <Border Grid.Row="4" Background="{DynamicResource HNInput}" CornerRadius="9" Padding="10">
                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <StackPanel VerticalAlignment="Center"><TextBlock Text="PANDORA" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource HNMutedText}" /><TextBlock x:Name="SidebarStatus" Text="Not signed in" FontSize="11" Foreground="{DynamicResource HNSecondaryText}" Margin="0,4,4,0" TextTrimming="CharacterEllipsis" /></StackPanel>
+                            <StackPanel VerticalAlignment="Center"><TextBlock x:Name="SidebarService" Text="PANDORA" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource HNMutedText}" /><TextBlock x:Name="SidebarStatus" Text="Not signed in" FontSize="11" Foreground="{DynamicResource HNSecondaryText}" Margin="0,4,4,0" TextTrimming="CharacterEllipsis" /></StackPanel>
                             <Button Grid.Column="1" Name="btnLogout" Click="btnLogout_Click" Content="Sign out" Style="{StaticResource RailButton}" Padding="7,9" IsEnabled="False" />
                         </Grid>
                     </Border>
@@ -126,4 +129,5 @@
         </Grid>
     </Border>
 </Window>
+
 
