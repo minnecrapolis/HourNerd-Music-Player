@@ -1,0 +1,38 @@
+name: Windows MP3 export test
+on:
+  push:
+    branches: [mp3-export]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Windows player and existing regression tests
+        run: .\Build-HourNerdMusicPlayer.ps1 -Test
+      - name: Verify real AAC to MP3 conversion
+        run: .\rebuild\Test-MP3Export.ps1
+      - name: Package update for an existing installation
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory 'dist\mp3-update' -Force | Out-Null
+          Copy-Item 'HourNerdMusicPlayer\bin\Release\HourNerdMusicPlayer.exe' 'dist\mp3-update'
+          Copy-Item 'HourNerdMusicPlayer\bin\Release\NAudio.Core.dll' 'dist\mp3-update'
+          Copy-Item 'HourNerdMusicPlayer\bin\Release\NAudio.Wasapi.dll' 'dist\mp3-update'
+          Copy-Item 'MP3-UPDATE-README.txt' 'dist\mp3-update'
+          Copy-Item 'Apply-MP3-Update.ps1' 'dist\mp3-update'
+          Copy-Item 'Apply-MP3-Update.cmd' 'dist\mp3-update'
+          Copy-Item 'upstream-notices\NAudio-LICENSE.txt' 'dist\mp3-update'
+          Get-ChildItem 'dist\mp3-update' -File | ForEach-Object { '{0}  {1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash, $_.Name } | Set-Content 'dist\mp3-update\SHA256SUMS.txt'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HourNerd-Windows-MP3-test-update
+          path: dist/mp3-update/*
+          if-no-files-found: error
+          retention-days: 14

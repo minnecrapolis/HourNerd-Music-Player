@@ -37,6 +37,8 @@
                 <MenuItem Click="mnuCreateArtist_Click" Header="Create Station from Artist" />
                 <MenuItem Click="mnuCreateSong_Click" Header="Create Station from Song" />
                 <MenuItem Click="mnuCopyToClipboard_Click" Header="Copy Song Title to Clipboard"/>
+                <Separator />
+                <MenuItem Click="SaveMenuMP3_Click" Header="Save as MP3…"/>
             </ContextMenu>
             <Converter:BinaryImageConverter x:Key="imgConverter" />
 
@@ -165,9 +167,12 @@
                 <RowDefinition Height="450*" />
                 <RowDefinition Height="25*" />
             </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Name="txtStationName" VerticalAlignment="Center"
+            <DockPanel Grid.Row="0">
+                <Button x:Name="SaveMP3Button" DockPanel.Dock="Right" Content="Save MP3…" Click="SaveCurrentMP3_Click" Padding="12,4" Margin="8,0,8,0" />
+                <TextBlock Name="txtStationName" VerticalAlignment="Center"
                  Text="Loading Songs..."
                  FontSize="18" TextAlignment="Center"></TextBlock>
+            </DockPanel>
 
             <ContentControl Name="CurrentSong" Grid.Row="1" VerticalAlignment="Top" ContentTemplate="{StaticResource SongTemplate}" Height="450" />
             <Grid Grid.Row="2" VerticalAlignment="Top" >

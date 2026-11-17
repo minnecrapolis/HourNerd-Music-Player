@@ -40,6 +40,32 @@ namespace HourNerdMusicPlayer
     /// </summary>
     public partial class PlaylistPage : UserControl
     {
+        private bool _savingMP3;
+        private void SaveCurrentMP3_Click(object sender, RoutedEventArgs e) { SaveSongMP3(_player.CurrentSong); }
+        private void SaveMenuMP3_Click(object sender, RoutedEventArgs e) { SaveSongMP3(_currMenuSong ?? _player.CurrentSong); }
+        private async void SaveSongMP3(Song song)
+        {
+            if (song == null || _savingMP3) return;
+            string title = song.SongTitle, artist = song.Artist, url = song.AudioUrl;
+            var dialog = new Microsoft.Win32.SaveFileDialog {
+                Title = "Save Pandora song as MP3", Filter = "MP3 audio (*.mp3)|*.mp3",
+                DefaultExt = ".mp3", AddExtension = true,
+                FileName = MP3Exporter.SafeName(artist + " - " + title) + ".mp3"
+            };
+            if (dialog.ShowDialog() != true) return;
+            _savingMP3 = true; SaveMP3Button.IsEnabled = false;
+            try
+            {
+                var progress = new System.Progress<string>(value => { SaveMP3Button.Content = value; });
+                await MP3Exporter.SaveAsync(url, dialog.FileName, progress, System.Threading.CancellationToken.None);
+                System.Windows.MessageBox.Show("Saved " + System.IO.Path.GetFileName(dialog.FileName), "MP3 saved", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (OperationCanceledException) { System.Windows.MessageBox.Show("The download timed out or was cancelled. Try while the song is still playing.", "Save MP3"); }
+            catch (InvalidOperationException error) { System.Windows.MessageBox.Show(error.Message, "Save MP3", MessageBoxButton.OK, MessageBoxImage.Warning); }
+            catch { System.Windows.MessageBox.Show("The song could not be saved as MP3. Check the destination folder, available storage, and Windows media support. No partial MP3 was kept.", "Save MP3", MessageBoxButton.OK, MessageBoxImage.Warning); }
+            finally { _savingMP3 = false; SaveMP3Button.IsEnabled = true; SaveMP3Button.Content = "Save MP3…"; }
+        }
+
         private readonly object _currSongLock = new object();
         private readonly Dictionary<Song, ImageButton[]> _feedbackMap;
         private readonly Player _player;
