@@ -12,9 +12,11 @@ using System.Web.Script.Serialization;
 
 namespace HourNerdMusicPlayer.Spotify
 {
-    internal sealed class SpotifySnapshot
+    public sealed class SpotifySnapshot
     {
         public bool playing { get; set; }
+        public bool connected { get; set; }
+        public string account { get; set; }
         public bool adblockLoaded { get; set; }
         public string title { get; set; }
         public string artist { get; set; }
@@ -25,7 +27,7 @@ namespace HourNerdMusicPlayer.Spotify
         public string error { get; set; }
         public SpotifyEntry[] entries { get; set; }
     }
-    internal sealed class SpotifyEntry
+    public sealed class SpotifyEntry
     {
         public string Name { get; set; }
         public string detail { get; set; }

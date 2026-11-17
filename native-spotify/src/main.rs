@@ -63,7 +63,7 @@ impl Engine {
    let session=self.session.as_ref().ok_or_else(||anyhow!("not connected"))?;let context=session.spclient().get_context(uri).await?;
    let data:Value=serde_json::from_str(&protobuf_json_mapping::print_to_string(&context)?)?;
    let mut tracks=vec![];collect_context_tracks(&data,&mut tracks);
-   if tracks.is_empty()&&valid_uri(uri,"playlist"){let playlist=Playlist::get(session,&SpotifyUri::from_uri(uri)?).await?;tracks=playlist.tracks().filter_map(|t|{let u=t.to_uri();valid_uri(&u,"track").then_some(u)}).collect();}
+   if tracks.is_empty()&&valid_uri(uri,"playlist"){let playlist=Playlist::get(session,&SpotifyUri::from_uri(uri)?).await?;tracks=playlist.contents.items.iter().filter_map(|item|{let u=item.id.to_uri();let attributes=json!({"metadata":item.attributes.format_attributes.0});(valid_uri(&u,"track")&&!hournerd_spotify::identified_ad(&attributes)).then_some(u)}).collect();}
    self.queue.replace(tracks,"");
   }else{return Err(anyhow!("not a supported music URI"));}
   let first=self.queue.current().ok_or_else(||anyhow!("no playable music tracks"))?.to_owned();self.load(&first)
@@ -95,7 +95,7 @@ impl Engine {
  }
 }
 #[tokio::main] async fn main(){
- let mut engine=Engine::new();engine.state();let mut input=BufReader::new(tokio::io::stdin()).lines();let mut events=None;
+ let mut engine=Engine::new();engine.state();let mut input=BufReader::new(tokio::io::stdin()).lines();let mut events:Option<tokio::sync::mpsc::UnboundedReceiver<PlayerEvent>>=None;
  loop{tokio::select!{
   line=input.next_line()=>{let Ok(Some(line))=line else{break;};if line.len()>65536{continue;}let Ok(command)=serde_json::from_str::<Command>(&line)else{continue;};let name=command.name.clone();if engine.command(command).await.is_err(){if name=="connect"||name=="restore"{engine.stop();engine.snapshot["error"]=json!("Spotify sign-in failed or this account was refused. Use Sign in to Spotify to try again.");}else{engine.snapshot["error"]=json!(format!("Spotify could not complete {name}. Try another track or sign in again."));}engine.state();}if (name=="connect"||name=="restore")&&engine.player.is_some(){events=engine.player.as_ref().map(|p|p.get_player_event_channel());}},
   event=async{match &mut events {Some(events)=>events.recv().await,None=>std::future::pending().await}}=>{if let Some(event)=event {let _=engine.event(event);}else{events=None;}},

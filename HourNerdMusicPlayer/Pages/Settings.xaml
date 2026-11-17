@@ -74,11 +74,11 @@
                 </Expander>
                 <Expander Header="Spotify account" Margin="5" IsExpanded="True">
                     <StackPanel Margin="8">
-                        <TextBlock Text="Uses the account signed in to Spotify Desktop." TextWrapping="Wrap" Margin="0,0,0,8" />
-                        <TextBlock Text="Sign in or switch accounts in Spotify Desktop, then return here. Your Spotify login can be different from Pandora. HourNerd does not store your Spotify password." TextWrapping="Wrap" Foreground="{DynamicResource HNSecondaryText}" Margin="0,0,0,8" />
+                        <TextBlock Text="Uses its own Spotify account, separate from Pandora." TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <TextBlock Text="Sign in through Spotify in your browser, then return to HourNerd. No Spotify app is needed. HourNerd protects your saved Spotify sign-in with Windows account encryption." TextWrapping="Wrap" Foreground="{DynamicResource HNSecondaryText}" Margin="0,0,0,8" />
                         <WrapPanel>
-                            <Button Name="btnSpotifyAccount" Content="Open Spotify / change account" Click="btnSpotifyAccount_Click" Margin="0,0,8,8" Padding="8" />
-                            <Button Name="btnSpotifySetup" Content="Set up Spotify connection" Click="btnSpotifySetup_Click" Margin="0,0,0,8" Padding="8" />
+                            <Button Name="btnSpotifyAccount" Content="Sign in / change Spotify account" Click="btnSpotifyAccount_Click" Margin="0,0,8,8" Padding="8" />
+                            <Button Name="btnSpotifySetup" Content="Reconnect Spotify" Click="btnSpotifySetup_Click" Margin="0,0,0,8" Padding="8" />
                         </WrapPanel>
                     </StackPanel>
                 </Expander>

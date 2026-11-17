@@ -9,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using HourNerdMusicPlayer;
+using HourNerdMusicPlayer.Spotify;
 class SpotifyUiTests
 {
     static Application app;
@@ -16,7 +17,7 @@ class SpotifyUiTests
     static int stage, attempts;
     static MainWindow window;
     static ComboBox services;
-    static string key;
+    
     static object Field(string name) { return typeof(MainWindow).GetField(name,BindingFlags.NonPublic|BindingFlags.Instance).GetValue(window); }
     static DependencyObject Find(DependencyObject parent,Predicate<DependencyObject> match) {
         if(parent==null)return null;
@@ -28,14 +29,18 @@ class SpotifyUiTests
     static bool Text(string text) { return Find((DependencyObject)window.Content,o=>o is TextBlock&&((TextBlock)o).Text==text)!=null; }
     static Button Button(string text) { return Find((DependencyObject)window.Content,o=>o is Button&&Convert.ToString(((Button)o).Content)==text) as Button; }
     static void Check(bool condition,string message) { if(!condition)throw new Exception(message);Console.WriteLine("PASS "+message); }
-    static void Snapshot() {
-        var request=(HttpWebRequest)WebRequest.Create("http://127.0.0.1:48372/exchange");
-        request.Method="POST";request.ContentType="application/json";request.KeepAlive=false;request.Timeout=4000;
-        request.Headers["Origin"]="https://xpui.app.spotify.com";request.Headers["X-HourNerd-Bridge"]=key;
-        var data=Encoding.UTF8.GetBytes("{\"title\":\"Fixture song\",\"artist\":\"Fixture artist\",\"entries\":[{\"name\":\"Fixture playlist\",\"uri\":\"spotify:playlist:1234567890123456789012\"}]}");
-        request.ContentLength=data.Length;using(var stream=request.GetRequestStream())stream.Write(data,0,data.Length);
-        using(var response=request.GetResponse())using(var stream=response.GetResponseStream())stream.CopyTo(Stream.Null);
+    sealed class FixtureEngine : ISpotifyEngine {
+        public int SignInCount;
+        public SpotifySnapshot Snapshot {get;private set;}
+        public FixtureEngine(){Snapshot=new SpotifySnapshot();}
+        public bool Connected {get{return Snapshot.connected;}}
+        public string Status {get{return Connected?"Connected to Spotify as fixture":"Sign in to Spotify to begin.";}}
+        public bool Command(string name,string value=""){return Connected;}
+        public void SignIn(){SignInCount++;Snapshot=new SpotifySnapshot {connected=true,account="fixture",title="Fixture song",artist="Fixture artist",entries=new[]{new SpotifyEntry {Name="Fixture playlist",uri="spotify:playlist:1234567890123456789012"}}};}
+        public void SignOut(){Snapshot=new SpotifySnapshot();}
+        public void Dispose(){}
     }
+    static readonly FixtureEngine fixture=new FixtureEngine();
     static void Tick(object sender,EventArgs args) {
         try {
             var layout=(FrameworkElement)window.Content;
@@ -48,9 +53,8 @@ class SpotifyUiTests
                 services.SelectedIndex=1;stage++;return;
             }
             if(stage==1){
-                Check(Button("Set up Spotify")!=null&&Text("YOUR SPOTIFY MUSIC"),"selecting Spotify displays its panel and sidebar");
-                key=File.ReadAllText(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"HourNerd Music Player","SpotifyBridge","bridge.key")).Trim();
-                Snapshot();stage++;return;
+                Check(Button("Sign in to Spotify")!=null&&Text("YOUR SPOTIFY MUSIC"),"selecting Spotify displays its panel and sidebar");
+                fixture.SignIn();stage++;return;
             }
             if(stage==2){
                 Check(Text("Fixture song"),"authenticated song metadata appears in native UI");
@@ -75,7 +79,7 @@ class SpotifyUiTests
             if(stage==5){
                 var sidebar=(ListBox)window.FindName("SidebarStationList");
                 Check(sidebar.Items.Count==1,"switching services preserves the Spotify library");
-                Check(File.ReadAllText(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"HourNerd Music Player","SpotifyBridge","bridge.key")).Trim()==key,"switching services preserves Spotify connection identity");
+                Check(fixture.SignInCount==1&&fixture.Connected,"switching services preserves Spotify connection identity");
                 timer.Stop();Console.Out.Flush();Environment.Exit(0);
             }
         }catch(Exception error){Console.Error.WriteLine(error);Console.Error.Flush();Environment.Exit(1);}
@@ -93,6 +97,8 @@ class SpotifyUiTests
             }
             MainWindow.SetCommandLine(new CommandLineOptions());
             // Exercise actual WPF controls without starting native audio or requiring a desktop session.
+            var pageType=typeof(MainWindow).Assembly.GetType("HourNerdMusicPlayer.Spotify.SpotifyPage");
+            pageType.GetField("EngineFactory",BindingFlags.NonPublic|BindingFlags.Static).SetValue(null,new Func<ISpotifyEngine>(()=>fixture));
             window=new MainWindow();
             var settings=(Settings)Activator.CreateInstance(typeof(Settings),new object[]{null,Field("_config"),null});
             typeof(MainWindow).GetField("_settingsPage",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(window,settings);

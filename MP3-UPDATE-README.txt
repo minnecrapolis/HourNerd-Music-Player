@@ -1,22 +1,19 @@
-HourNerd Music Player - Windows Spotify test update
+HourNerd Music Player - Standalone Spotify Windows test 1.2.0
 
-1. Extract the entire ZIP.
+1. Extract the ENTIRE ZIP to a new folder.
 2. Close HourNerd completely, including its tray icon.
-3. Run Apply-MP3-Update.cmd. It backs up your existing EXE and adds the Spotify
-   setup files. The installed Pandora and audio repair DLLs are preserved.
-4. Open HourNerd and choose Spotify in the dropdown above your station list.
-5. Click Set up Spotify once, with the Spotify desktop app already installed
-   and signed in. Leave Spotify running for audio, then use HourNerd.
+3. Run Apply-MP3-Update.cmd and verify it reports the installed EXE path.
+4. Run Start-HourNerd-Standalone.cmd to open the updated installed copy.
+5. Choose Spotify, click Sign in to Spotify, approve it in your browser,
+   and return to HourNerd to select a playlist or search result.
 
-See Spotify\SPOTIFY-README.txt for details, dependencies and removal.
-Pandora and Save MP3 remain available by switching the dropdown to Pandora.
-The beer tip button is preserved in the private build.
+This update uses native playback. It does not install or control Spotify
+Desktop. The old bridge's setup tools are removed from the HourNerd installation
+folder after being backed up. It does not uninstall or modify Spotify/Spicetify.
+The installed Pandora and repaired audio DLLs are preserved.
 
-The Spotify integration is a test build. Automated bridge and playback-command
-fixtures passed; live account playback, ad blocking and repeated skips still
-need testing. Spotify server restrictions and ads embedded inside recordings
-are not guaranteed to be removable. HourNerd adds no local skip quota.
+See Spotify\SPOTIFY-README.txt for account, queue, compatibility and test details.
+The native player needs 64-bit Windows. Pandora keeps its existing login.
 
-To roll back: close HourNerd, restore HourNerdMusicPlayer.exe from the newest
-MP3-update-backup folder in the installation directory. Disable the Spotify
-extensions with Spotify\Remove-Spotify-Bridge.cmd if desired.
+Rollback: close HourNerd, restore the EXE/DLLs and Spotify subfolder from the
+newest MP3-update-backup folder. Keep that folder until testing is complete.
