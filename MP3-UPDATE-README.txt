@@ -28,3 +28,7 @@ Conversion and decoding tests use generated audio, not Pandora content.
 Live Pandora export on the owner's computer still needs verification.
 Source and third-party notices are in the repository's mp3-export branch.
 NAudio: Copyright Mark Heath and contributors, MIT license included.
+
+This build also adds Buy the developer a beer in the sidebar, with Cash App
+and Zelle instructions using the payment email shown in the app and a copy-email button.
+

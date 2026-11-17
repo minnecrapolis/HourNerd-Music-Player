@@ -97,7 +97,7 @@
                             <Button Content="Settings" Tag="settings" Click="Navigation_Click" Style="{StaticResource RailButton}" />
                             <Button Content="About" Tag="about" Click="Navigation_Click" Style="{StaticResource RailButton}" />
                         </UniformGrid>
-                        <Button Content="Tip the Developer" Tag="tip" Click="Navigation_Click" Style="{StaticResource RailButton}" Foreground="{DynamicResource HNAccentText}" />
+                        <Button Content="🍺 Buy the developer a beer" Tag="tip" Click="Navigation_Click" Style="{StaticResource RailButton}" Foreground="{DynamicResource HNAccentText}" />
                     </StackPanel>
                     <Border Grid.Row="4" Background="{DynamicResource HNInput}" CornerRadius="9" Padding="10">
                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -126,3 +126,4 @@
         </Grid>
     </Border>
 </Window>
+

@@ -15,7 +15,7 @@ try {
     New-Item -ItemType Directory $backup | Out-Null
     $replaced=@()
     try {
-        foreach($name in @('HourNerdMusicPlayer.exe','NAudio.Core.dll','NAudio.Wasapi.dll')){
+        foreach($name in @('HourNerdMusicPlayer.exe','NAudio.Core.dll','NAudio.Wasapi.dll','developer-tip-email.txt')){
             $target=Join-Path $InstallPath $name
             if(Test-Path $target){Copy-Item $target $backup}
             Copy-Item (Join-Path $PSScriptRoot $name) $target -Force
