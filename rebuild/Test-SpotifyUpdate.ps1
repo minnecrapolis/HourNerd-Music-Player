@@ -27,3 +27,6 @@ try {
     if((Get-FileHash (Join-Path $install 'HourNerdMusicPlayer.exe')).Hash -ne $expected){throw 'Failed verification changed the installed EXE.'}
     Write-Host 'PASS checksum failure leaves the installed player unchanged'
 }finally{Remove-Item $temporary -Recurse -Force -ErrorAction SilentlyContinue}
+
+# The intentionally rejected corrupt package exited 1; the test suite passed.
+$global:LASTEXITCODE=0

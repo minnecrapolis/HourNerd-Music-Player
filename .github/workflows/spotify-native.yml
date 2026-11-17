@@ -21,6 +21,7 @@ jobs:
         with:
           workspaces: native-spotify
           cache-on-failure: true
+          cache-workspace-crates: true
       - name: Build native Spotify playback engine
         working-directory: native-spotify
         run: cargo build --release --target x86_64-pc-windows-msvc
