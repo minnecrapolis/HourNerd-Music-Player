@@ -87,7 +87,7 @@ namespace HourNerdMusicPlayer
                                 using (var output = new FileStream(input, FileMode.Create, FileAccess.Write, FileShare.None, 32768, true))
                                 {
                                     byte[] buffer = new byte[32768]; int count; long size = 0;
-                                    while ((count = await source.ReadAsync(buffer, 0, buffer.Length, timeout.Token).ConfigureAwait(false)) > 0)
+                                    while ((count = await ReadNetworkAsync(source, buffer, timeout.Token).ConfigureAwait(false)) > 0)
                                     {
                                         size += count;
                                         if (size > 100L * 1024 * 1024) throw new InvalidOperationException("This audio download is too large to save.");
@@ -114,6 +114,11 @@ namespace HourNerdMusicPlayer
                 }
             }
             throw new InvalidOperationException(last);
+        }
+        private static async Task<int> ReadNetworkAsync(Stream source, byte[] buffer, CancellationToken cancellation)
+        {
+            try { return await source.ReadAsync(buffer, 0, buffer.Length, cancellation).ConfigureAwait(false); }
+            catch (IOException error) { throw new HttpRequestException("The audio connection was interrupted.", error); }
         }
         internal static string DetectExtension(string path)
         {

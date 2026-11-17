@@ -51,10 +51,21 @@ class RetryFixture:HttpMessageHandler
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken cancellation)
     {
         Calls++;
-        if(!limited&&Calls==1)throw new HttpRequestException("fixture network interruption");
+
         var response=new HttpResponseMessage(limited?(HttpStatusCode)429:HttpStatusCode.OK);
-        response.Content=new ByteArrayContent(audio);
+        response.Content=!limited&&Calls==1?(HttpContent)new StreamContent(new InterruptedStream(audio)):new ByteArrayContent(audio);
         response.Content.Headers.ContentType=new System.Net.Http.Headers.MediaTypeHeaderValue("audio/mp4");
         return Task.FromResult(response);
+    }
+}
+
+class InterruptedStream:MemoryStream
+{
+    private bool first=true;
+    public InterruptedStream(byte[] bytes):base(bytes){}
+    public override Task<int> ReadAsync(byte[] buffer,int offset,int count,CancellationToken cancellation)
+    {
+        if(!first)throw new IOException("fixture interruption after partial audio");
+        first=false;return base.ReadAsync(buffer,offset,Math.Min(128,count),cancellation);
     }
 }
