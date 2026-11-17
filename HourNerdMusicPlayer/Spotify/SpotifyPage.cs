@@ -65,7 +65,7 @@ namespace HourNerdMusicPlayer.Spotify
         internal void Send(string command,string value="")
         {if(bridge==null||!bridge.Command(command,value))status.Text="Spotify is not connected yet. Open it and run Set up Spotify once.";}
         internal void SetActive(bool value)
-        {active=value;if(!value&&bridge!=null)bridge.Command("pause");if(value&&bridge!=null&&bridge.Connected)bridge.Command("library");Refresh();}
+        {active=value;if(value)entriesSignature="";if(!value&&bridge!=null)bridge.Command("pause");if(value&&bridge!=null&&bridge.Connected)bridge.Command("library");Refresh();}
         private void PlaySelected(){var selected=results.SelectedItem as SpotifyEntry;if(selected!=null)Send("playUri",selected.uri);}
         private void Refresh()
         {
