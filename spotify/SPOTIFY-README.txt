@@ -13,6 +13,12 @@ HourNerd supplies the interface; Spotify Desktop handles music playback in
 its normal authenticated session. The separate Spotify window can be minimized.
 No Spotify developer account, Client ID, or pasted access token is needed.
 
+Settings has separate Pandora account and Spotify account sections. Pandora
+uses its own saved login. To change Spotify accounts, use Open Spotify / change
+account, sign out from Spotify's profile menu and sign in to the desired account.
+Switching accounts in one service does not change the other service's login.
+HourNerd does not ask for or store your Spotify password.
+
 Controls: previous, play/pause, next, like, your playlists, song/playlist search.
 HourNerd adds no skip counter. A server-side refusal is still possible and is
 not silently overridden. The bundled adblockify extension blocks client ad

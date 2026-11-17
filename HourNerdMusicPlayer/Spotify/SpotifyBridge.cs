@@ -119,9 +119,10 @@ namespace HourNerdMusicPlayer.Spotify
                 if (fields.ContainsKey("Transfer-Encoding") || !int.TryParse(rawLength, out length) || length < 2 || length > 262144) { await Reply(stream, 400, "{}", origin, timeout.Token); return; }
                 byte[] body = new byte[length]; int read = 0;
                 while (read < length) { int count = await stream.ReadAsync(body, read, length - read, timeout.Token).ConfigureAwait(false); if (count == 0) return; read += count; }
-                SpotifySnapshot update;
+                SpotifySnapshot update = null;
                 var json = new JavaScriptSerializer { MaxJsonLength = 262144, RecursionLimit = 12 };
-                try { update = json.Deserialize<SpotifySnapshot>(Encoding.UTF8.GetString(body)); if (update == null) throw new Exception(); } catch { await Reply(stream, 400, "{}", origin, timeout.Token); return; }
+                try { update = json.Deserialize<SpotifySnapshot>(Encoding.UTF8.GetString(body)); } catch { }
+                if (update == null) { await Reply(stream, 400, "{}", origin, timeout.Token); return; }
                 var outgoing = new List<object>();
                 lock (gate)
                 {

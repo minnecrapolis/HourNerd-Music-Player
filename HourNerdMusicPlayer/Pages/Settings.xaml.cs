@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright 2012 - Adam Haile
  * Modifications Copyright 2026 - Chris Dahlkvist (HourNerd Music Player)
  * http://adamhaile.net
@@ -76,6 +76,16 @@ namespace HourNerdMusicPlayer
         public event RestartEvent Restart;
 
         public event LogoutEvent Logout;
+        public event Action PandoraSignInRequest;
+        public event Action SpotifyAccountRequest;
+        public event Action SpotifySetupRequest;
+
+        private void btnPandoraSignIn_Click(object sender, RoutedEventArgs e)
+        { if (PandoraSignInRequest != null) PandoraSignInRequest(); }
+        private void btnSpotifyAccount_Click(object sender, RoutedEventArgs e)
+        { if (SpotifyAccountRequest != null) SpotifyAccountRequest(); }
+        private void btnSpotifySetup_Click(object sender, RoutedEventArgs e)
+        { if (SpotifySetupRequest != null) SpotifySetupRequest(); }
 
         public event LastFMAuthRequestEvent LastFMAuthRequest;
 
@@ -248,6 +258,9 @@ namespace HourNerdMusicPlayer
         private void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
             btnLogout.IsEnabled = _player.LoggedIn;
+            PandoraAccountStatus.Text = _player.LoggedIn
+                ? "Signed in to Pandora: " + _config.Fields.Login_Email
+                : "Not signed in to Pandora";
             LoadConfig();
         }
 

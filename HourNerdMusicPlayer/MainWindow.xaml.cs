@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -621,6 +621,19 @@ namespace HourNerdMusicPlayer
             //transitionControl.AddPage(_searchPage);
 
             _settingsPage = new Settings(_player, _config, _keyHost);
+            _settingsPage.PandoraSignInRequest += () => {
+                MusicService.SelectedIndex = 0;
+                if (_player.LoggedIn) _settingsPage_Logout();
+                else ShowPage(_loginPage);
+            };
+            _settingsPage.SpotifyAccountRequest += () => {
+                MusicService.SelectedIndex = 1;
+                if (_spotifyPage != null) _spotifyPage.OpenSpotify();
+            };
+            _settingsPage.SpotifySetupRequest += () => {
+                MusicService.SelectedIndex = 1;
+                if (_spotifyPage != null) _spotifyPage.SetupSpotify();
+            };
             //transitionControl.AddPage(_settingsPage);
 
             _restartPage = new RestartPage();
@@ -1096,6 +1109,10 @@ namespace HourNerdMusicPlayer
 
         public static bool Next()
         {
+            if (_mainWindow._spotifySelected) {
+                System.Windows.Application.Current.Dispatcher.Invoke((Action)(() => _mainWindow._spotifyPage.Send("next")));
+                return true;
+            }
             if ((DateTime.Now - lastTimeSkipped).Seconds > 20)
             {
                 System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
@@ -1110,6 +1127,10 @@ namespace HourNerdMusicPlayer
         }
         public static void Pause()
         {
+            if (_mainWindow._spotifySelected) {
+                System.Windows.Application.Current.Dispatcher.Invoke((Action)(() => _mainWindow._spotifyPage.Send("pause")));
+                return;
+            }
             System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
             {
                 _mainWindow.showBalloon(PAUSE);
@@ -1118,6 +1139,10 @@ namespace HourNerdMusicPlayer
         }
         public static void Play()
         {
+            if (_mainWindow._spotifySelected) {
+                System.Windows.Application.Current.Dispatcher.Invoke((Action)(() => _mainWindow._spotifyPage.Send("play")));
+                return;
+            }
             System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
             {
                 _mainWindow.showBalloon(PLAY);
@@ -1126,6 +1151,10 @@ namespace HourNerdMusicPlayer
         }
         public static void PlayPauseToggle()
         {
+            if (_mainWindow._spotifySelected) {
+                System.Windows.Application.Current.Dispatcher.Invoke((Action)(() => _mainWindow._spotifyPage.Send("toggle")));
+                return;
+            }
             System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
             {
                 if (_player.Paused)

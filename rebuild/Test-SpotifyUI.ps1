@@ -26,8 +26,15 @@ try{
     $bitmap=New-Object Drawing.Bitmap([int]$bounds.Width,[int]$bounds.Height)
     $graphics=[Drawing.Graphics]::FromImage($bitmap)
     try{$graphics.CopyFromScreen([int]$bounds.Left,[int]$bounds.Top,0,0,$bitmap.Size);$bitmap.Save((Join-Path $root 'spotify-preview.png'),[Drawing.Imaging.ImageFormat]::Png)}finally{$graphics.Dispose();$bitmap.Dispose()}
+    $settings=Find-Name 'Settings'
+    $settings.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+    Start-Sleep -Milliseconds 500
+    foreach($accountName in @('Pandora account','Spotify account','Sign in / change Pandora account','Open Spotify / change account','Set up Spotify connection')) {
+        if(!(Find-Name $accountName)){throw "Missing separate account control: $accountName"}
+    }
+    Write-Host 'PASS Settings offers separate Pandora and Spotify account controls'
     $expand.Expand();Start-Sleep -Milliseconds 300
-    $pandora=Find-Name 'Pandora';$pandora.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select();$expand.Collapse()
+    $pandora=Find-Name 'Pandora' ;$pandora.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select();$expand.Collapse()
     Start-Sleep -Milliseconds 500
     if(!(Find-Name 'YOUR STATIONS')){throw 'Switching back did not restore Pandora sidebar.'}
     Write-Host 'PASS selecting Pandora restores its station interface'

@@ -22,6 +22,7 @@ namespace HourNerdMusicPlayer.Spotify
         private string artworkUrl="", entriesSignature="";
         private bool active;
         internal event Action<SpotifyEntry[]> EntriesChanged;
+        internal void SetupSpotify() { OpenFile("Setup-Spotify.cmd"); }
         internal void OpenSpotify() { OpenUri("spotify:"); }
         internal bool Connected { get { return bridge!=null && bridge.Connected; } }
         internal SpotifyPage()
@@ -78,7 +79,7 @@ namespace HourNerdMusicPlayer.Spotify
             play.Content=snapshot.playing?"Pause":"Play";
             duration.Text=Clock(snapshot.position)+" / "+Clock(snapshot.duration);
             adblock.Text=snapshot.adblockLoaded?"Ad blocking extension loaded · HourNerd adds no skip counter":"Ad blocking extension not detected. Run Set up Spotify, then restart Spotify.";
-            var rows=(snapshot.entries??new SpotifyEntry[0]).Where(e=>e!=null&&SpotifyBridge.ValidUri(e.uri)).Take(100).ToArray();
+            var rows=(snapshot.entries??new SpotifyEntry[0]).Where(e=>e!=null&&!string.IsNullOrEmpty(e.name)&&SpotifyBridge.ValidUri(e.uri)).Take(100).ToArray();
             string signature=string.Join("|",rows.Select(e=>e.uri+e.name));
             if(signature!=entriesSignature){var selected=results.SelectedItem as SpotifyEntry;results.ItemsSource=rows;if(selected!=null)results.SelectedItem=rows.FirstOrDefault(e=>e.uri==selected.uri);entriesSignature=signature;if(EntriesChanged!=null)EntriesChanged(rows); }
             string image=snapshot.artwork??"";
