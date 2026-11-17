@@ -57,6 +57,10 @@ jobs:
         run: |
           & '.\rebuild\Test-MsiUi.ps1' -MsiPath ".\dist\HourNerd-Music-Player-$env:PRODUCT_VERSION-Setup.msi"
 
+      - name: Verify real MSI install and uninstall
+        run: |
+          & '.\rebuild\Test-MsiInstall.ps1' -MsiPath ".\dist\HourNerd-Music-Player-$env:PRODUCT_VERSION-Setup.msi"
+
       - name: Retain validated audio repair DLL
         uses: actions/upload-artifact@v4
         with:
@@ -107,7 +111,10 @@ jobs:
           name: Windows-installer-build-diagnostics
           if-no-files-found: ignore
           retention-days: 7
-          path: dist/MSI-build-validation.log
+          path: |
+            dist/MSI-build-validation.log
+            dist/MSI-install-validation.log
+            dist/MSI-uninstall-validation.log
 
       - name: Publish public GitHub prerelease
         # Paused: release must support ordinary Pandora account sign-in without end-user API setup.
