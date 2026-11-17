@@ -13,7 +13,31 @@ try {
         Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Collections.Generic;
 public static class MsiButtonClick {
+ public delegate bool EnumProc(IntPtr hwnd, IntPtr l);
+ [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb,IntPtr l);
+ [DllImport("user32.dll")] public static extern bool EnumChildWindows(IntPtr hwnd,EnumProc cb,IntPtr l);
+ [DllImport("user32.dll",CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr hwnd,StringBuilder b,int n);
+ [DllImport("user32.dll")] public static extern bool IsWindowEnabled(IntPtr hwnd);
+ public static string Title(IntPtr h) { var b=new StringBuilder(2048); GetWindowText(h,b,b.Capacity); return b.ToString(); }
+ public static string Pump() {
+   var messages=new List<string>();
+   EnumWindows((h,l)=> {
+     var title=Title(h);
+     if (title.IndexOf("HourNerd",StringComparison.OrdinalIgnoreCase)<0 && title.IndexOf("Windows Installer",StringComparison.OrdinalIgnoreCase)<0) return true;
+     messages.Add("Window: "+title);
+     EnumChildWindows(h,(c,x)=> {
+       var text=Title(c); if(text.Length>0) messages.Add(text);
+       var label=text.Replace("&","");
+       if (IsWindowEnabled(c) && (label=="Install" || label=="Finish" || label=="OK")) PostMessage(c,0x00F5,IntPtr.Zero,IntPtr.Zero);
+       return true;
+     },IntPtr.Zero);
+     return true;
+   },IntPtr.Zero);
+   return String.Join(" | ",messages);
+ }
  [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint message, IntPtr w, IntPtr l);
 }
 '@
@@ -21,6 +45,8 @@ public static class MsiButtonClick {
         $deadline = (Get-Date).AddSeconds(120)
         $seen = @{}
         while (!$process.HasExited -and (Get-Date) -lt $deadline) {
+            $nativeSummary = [MsiButtonClick]::Pump()
+            if ($nativeSummary -and !$seen.ContainsKey($nativeSummary)) { Write-Host "MSI native UI: $nativeSummary"; $seen[$nativeSummary] = $true }
             $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children,[System.Windows.Automation.Condition]::TrueCondition)
             foreach ($window in $windows) {
                 try {
