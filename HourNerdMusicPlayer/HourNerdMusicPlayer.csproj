@@ -93,6 +93,9 @@
     <Reference Include="Microsoft.WindowsAPICodePack.Shell">
       <HintPath>..\Libs\Microsoft.WindowsAPICodePack.Shell.dll</HintPath>
     </Reference>
+    <Reference Include="NAudio.Core"><HintPath>..\packages\NAudio.Core.2.2.1\lib\netstandard2.0\NAudio.Core.dll</HintPath><Private>True</Private></Reference>
+    <Reference Include="NAudio.Wasapi"><HintPath>..\packages\NAudio.Wasapi.2.2.1\lib\netstandard2.0\NAudio.Wasapi.dll</HintPath><Private>True</Private></Reference>
+    <Reference Include="System.Net.Http" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
@@ -128,6 +131,9 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="OptionalUserLogging.cs" />
+    <Compile Include="MP3Exporter.cs" />
+    <Compile Include="Spotify\SpotifyBridge.cs" />
+    <Compile Include="Spotify\SpotifyPage.cs" />
     <Compile Include="Pages\HistoryPage.xaml.cs">
       <DependentUpon>HistoryPage.xaml</DependentUpon>
     </Compile>
@@ -520,3 +526,5 @@
     </Page>
   </ItemGroup>
 </Project>
+
+

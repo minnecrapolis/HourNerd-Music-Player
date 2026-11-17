@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="HourNerdMusicPlayer.Settings" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<UserControl x:Class="HourNerdMusicPlayer.Settings" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:config="clr-namespace:HourNerdMusicPlayer" mc:Ignorable="d"
@@ -61,29 +61,26 @@
                 <!-- Due to a bug in the VS2010 Designer, the contents of expanders are not visible at design time when using custom styles.
                      In order to see the contents while designing, add Style="" to the main expander tag section of each. Then remove when done. -->
 
-                <Expander Header="Login" Margin="5" IsExpanded="True">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <CheckBox Grid.Column="0" Margin="5" Name="chkAutoLogin"
-                      IsChecked="True"
-                      Content="Automatically Login" />
-                        <Button Grid.Column="1" Name="btnLogout" Margin="5"  Content="Logout" HorizontalAlignment="Right"  Style="{DynamicResource MaterialDesignFlatButton}"
-                    Click="btnLogout_Click">
-                            <Button.ToolTip>
-                                <TextBlock FontSize="14">
-                                    Logs out off the current session
-                                    <LineBreak/>
-                                    and clears the account information.
-                                    <LineBreak/>
-                                    Any playing station will be stopped.
-                                </TextBlock>
-                            </Button.ToolTip>
-                        </Button>
-
-                    </Grid>
+                <Expander Header="Pandora account" Margin="5" IsExpanded="True">
+                    <StackPanel Margin="8">
+                        <TextBlock Name="PandoraAccountStatus" TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <TextBlock Text="Use your Pandora email and password on the Pandora sign-in screen. This account is separate from Spotify." TextWrapping="Wrap" Foreground="{DynamicResource HNSecondaryText}" Margin="0,0,0,8" />
+                        <WrapPanel>
+                            <Button Name="btnPandoraSignIn" Content="Sign in / change Pandora account" Click="btnPandoraSignIn_Click" Margin="0,0,8,8" Padding="8" />
+                            <Button Name="btnLogout" Content="Sign out of Pandora" Click="btnLogout_Click" Margin="0,0,0,8" Padding="8" />
+                        </WrapPanel>
+                        <CheckBox Name="chkAutoLogin" Content="Automatically sign in to Pandora" Margin="0,5" />
+                    </StackPanel>
+                </Expander>
+                <Expander Header="Spotify account" Margin="5" IsExpanded="True">
+                    <StackPanel Margin="8">
+                        <TextBlock Text="Uses the account signed in to Spotify Desktop." TextWrapping="Wrap" Margin="0,0,0,8" />
+                        <TextBlock Text="Sign in or switch accounts in Spotify Desktop, then return here. Your Spotify login can be different from Pandora. HourNerd does not store your Spotify password." TextWrapping="Wrap" Foreground="{DynamicResource HNSecondaryText}" Margin="0,0,0,8" />
+                        <WrapPanel>
+                            <Button Name="btnSpotifyAccount" Content="Open Spotify / change account" Click="btnSpotifyAccount_Click" Margin="0,0,8,8" Padding="8" />
+                            <Button Name="btnSpotifySetup" Content="Set up Spotify connection" Click="btnSpotifySetup_Click" Margin="0,0,0,8" Padding="8" />
+                        </WrapPanel>
+                    </StackPanel>
                 </Expander>
                 <Expander Header="Appearance" Margin="5" IsExpanded="True">
                     <StackPanel Margin="8">

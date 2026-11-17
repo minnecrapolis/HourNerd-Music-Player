@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -208,6 +208,44 @@ namespace HourNerdMusicPlayer
         }
 
 
+        private bool _spotifySelected;
+        private Spotify.SpotifyPage _spotifyPage;
+        private void MusicService_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!IsInitialized || MusicService == null || cntCtrl == null) return;
+            _spotifySelected = MusicService.SelectedIndex == 1;
+            if (_spotifySelected)
+            {
+                if (_player != null && _player.Playing) _player.Pause();
+                if (_spotifyPage == null) { _spotifyPage = new Spotify.SpotifyPage(); _spotifyPage.EntriesChanged += SetSpotifySidebar; }
+                SidebarSearch.Text = "";
+                SidebarLibraryHeading.Text = "YOUR SPOTIFY MUSIC"; SidebarSearchHint.Text = "Filter the current list"; SidebarService.Text = "SPOTIFY";
+                btnLogout.Content = "Account"; btnLogout.IsEnabled = true;
+                SetSpotifySidebar(new Spotify.SpotifyEntry[0]);
+                _spotifyPage.SetActive(true); ShowPage(_spotifyPage);
+                SidebarStationList.IsEnabled = true; SidebarSearch.IsEnabled = true;
+            }
+            else
+            {
+                if (_spotifyPage != null) _spotifyPage.SetActive(false);
+                SidebarSearch.IsEnabled = true; SidebarLibraryHeading.Text = "YOUR STATIONS"; SidebarSearchHint.Text = "Search stations"; SidebarService.Text = "PANDORA"; btnLogout.Content = "Sign out";
+                if (_player != null && _player.LoggedIn) ShowLibraryHome(); else { RefreshSidebarStations(); SidebarStatus.Text = "Not signed in"; ShowPage((UserControl)_loginPage ?? _loadingPage); }
+            }
+            System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+        }
+        private void SetSpotifySidebar(Spotify.SpotifyEntry[] rows)
+        {
+            if (!_spotifySelected) return;
+            _updatingSidebar = true;
+            try {
+                _sidebarStations = new System.Windows.Data.ListCollectionView(rows.ToList());
+                _sidebarStations.Filter = item => ((Spotify.SpotifyEntry)item).Name.IndexOf(SidebarSearch.Text.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
+                SidebarStationList.ItemsSource = _sidebarStations; SidebarStationCount.Text = rows.Length.ToString();
+                SidebarEmpty.Text = "Open Spotify, then choose My playlists or Search.";
+                SidebarEmpty.Visibility = _sidebarStations.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
+                SidebarStatus.Text = _spotifyPage.Connected ? "Connected" : "Open Spotify to connect";
+            } finally { _updatingSidebar = false; }
+        }
         private UserControl _libraryHome;
         private System.ComponentModel.ICollectionView _sidebarStations;
         private bool _updatingSidebar;
@@ -240,6 +278,7 @@ namespace HourNerdMusicPlayer
             if (tag == "tip") { TipDeveloper.Show(this); return; }
             if (tag == "about") { ShowPage(_aboutPage); return; }
             if (tag == "settings") { ShowPage(_settingsPage); return; }
+            if (_spotifySelected) { ShowPage(_spotifyPage); return; }
             if (_player == null || !_player.LoggedIn) return;
             switch (tag)
             {
@@ -259,6 +298,7 @@ namespace HourNerdMusicPlayer
         {
             this.BeginDispatch(() =>
             {
+                if (_spotifySelected) { if (_player != null && _player.Playing) _player.Pause(); return; }
                 _updatingSidebar = true;
                 try
                 {
@@ -293,7 +333,7 @@ namespace HourNerdMusicPlayer
             try
             {
                 _sidebarStations.Refresh();
-                SidebarStationList.SelectedItem = _player.CurrentStation;
+                if (!_spotifySelected && _player != null) SidebarStationList.SelectedItem = _player.CurrentStation;
                 SidebarEmpty.Visibility = _sidebarStations.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
             }
             finally { _updatingSidebar = false; }
@@ -301,7 +341,9 @@ namespace HourNerdMusicPlayer
 
         private void SidebarStationList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_updatingSidebar || _player == null || !_player.LoggedIn) return;
+            if (_updatingSidebar) return;
+            if (_spotifySelected) { var entry = SidebarStationList.SelectedItem as Spotify.SpotifyEntry; if (entry != null) _spotifyPage.Send("playUri", entry.uri); return; }
+            if (_player == null || !_player.LoggedIn) return;
             var station = SidebarStationList.SelectedItem as Station;
             if (station == null || (station == _player.CurrentStation && _player.Playing)) return;
             SidebarStatus.Text = "Loading " + station.Name + "…";
@@ -579,6 +621,19 @@ namespace HourNerdMusicPlayer
             //transitionControl.AddPage(_searchPage);
 
             _settingsPage = new Settings(_player, _config, _keyHost);
+            _settingsPage.PandoraSignInRequest += () => {
+                MusicService.SelectedIndex = 0;
+                if (_player.LoggedIn) _settingsPage_Logout();
+                else ShowPage(_loginPage);
+            };
+            _settingsPage.SpotifyAccountRequest += () => {
+                MusicService.SelectedIndex = 1;
+                if (_spotifyPage != null) _spotifyPage.OpenSpotify();
+            };
+            _settingsPage.SpotifySetupRequest += () => {
+                MusicService.SelectedIndex = 1;
+                if (_spotifyPage != null) _spotifyPage.SetupSpotify();
+            };
             //transitionControl.AddPage(_settingsPage);
 
             _restartPage = new RestartPage();
@@ -970,7 +1025,7 @@ namespace HourNerdMusicPlayer
 
             this.Dispatch(SetupThumbnailToolbarButtons);
 
-            if (_config.Fields.Login_AutoLogin &&
+            if (!_spotifySelected && _config.Fields.Login_AutoLogin &&
                 (!string.IsNullOrEmpty(_config.Fields.Login_Email)) &&
                 (!string.IsNullOrEmpty(_config.Fields.Login_Password)))
             {
@@ -994,9 +1049,12 @@ namespace HourNerdMusicPlayer
             this.Dispatch(() =>
             {
                 if (control == null) return;
+                if (_spotifySelected && _player != null && _player.Playing) _player.Pause();
+                if (_spotifySelected && control != _settingsPage && control != _aboutPage) control = _spotifyPage;
+                if (control == null) return;
                 CurrentPage = control;
                 ContentGrid.RowDefinitions[2].Height = new GridLength(
-                    _player != null && _player.LoggedIn && _player.CurrentSong != null ? 75 : 0);
+                    !_spotifySelected && _player != null && _player.LoggedIn && _player.CurrentSong != null ? 75 : 0);
                 if (control == _playlistPage) PageHeading.Text = _player.CurrentStation == null ? "Now playing" : _player.CurrentStation.Name;
                 else if (control == _stationPage) PageHeading.Text = "Manage your stations";
                 else if (control == _historyPage) PageHeading.Text = "Recently played";
@@ -1005,6 +1063,7 @@ namespace HourNerdMusicPlayer
                 else if (control == _loginPage) PageHeading.Text = "Welcome to your music";
                 else if (control == _searchPage) PageHeading.Text = "Discover a station";
                 else if (control == _libraryHome) PageHeading.Text = "Your library";
+                if (control == _spotifyPage) PageHeading.Text = "Spotify · Your music";
                 cntCtrl.Content = control;
             });
         }
@@ -1050,6 +1109,10 @@ namespace HourNerdMusicPlayer
 
         public static bool Next()
         {
+            if (_mainWindow._spotifySelected) {
+                System.Windows.Application.Current.Dispatcher.Invoke((Action)(() => _mainWindow._spotifyPage.Send("next")));
+                return true;
+            }
             if ((DateTime.Now - lastTimeSkipped).Seconds > 20)
             {
                 System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
@@ -1064,6 +1127,10 @@ namespace HourNerdMusicPlayer
         }
         public static void Pause()
         {
+            if (_mainWindow._spotifySelected) {
+                System.Windows.Application.Current.Dispatcher.Invoke((Action)(() => _mainWindow._spotifyPage.Send("pause")));
+                return;
+            }
             System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
             {
                 _mainWindow.showBalloon(PAUSE);
@@ -1072,6 +1139,10 @@ namespace HourNerdMusicPlayer
         }
         public static void Play()
         {
+            if (_mainWindow._spotifySelected) {
+                System.Windows.Application.Current.Dispatcher.Invoke((Action)(() => _mainWindow._spotifyPage.Send("play")));
+                return;
+            }
             System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
             {
                 _mainWindow.showBalloon(PLAY);
@@ -1080,6 +1151,10 @@ namespace HourNerdMusicPlayer
         }
         public static void PlayPauseToggle()
         {
+            if (_mainWindow._spotifySelected) {
+                System.Windows.Application.Current.Dispatcher.Invoke((Action)(() => _mainWindow._spotifyPage.Send("toggle")));
+                return;
+            }
             System.Windows.Application.Current.Dispatcher.Invoke((Action)(() =>
             {
                 if (_player.Paused)
@@ -1494,6 +1569,7 @@ namespace HourNerdMusicPlayer
 
         private void btnLogout_Click(object sender, RoutedEventArgs e)
         {
+            if (_spotifySelected) { _spotifyPage.OpenSpotify(); return; }
             _settingsPage_Logout();
         }
 
@@ -1704,6 +1780,7 @@ namespace HourNerdMusicPlayer
                     _config.Fields.HourNerdMusicPlayer_Volume = _player.Volume;
                 _config.SaveConfig();
             }
+            if (_spotifyPage != null) _spotifyPage.Dispose();
             StopWebServer();
         }
 
@@ -1732,6 +1809,7 @@ namespace HourNerdMusicPlayer
 
         public void PlayPauseToggled(object sender, ExecutedRoutedEventArgs e)
         {
+            if (_spotifySelected) { _spotifyPage.Send("toggle"); return; }
             //this is inverse because of being applied before action is taken
             if (!_player.Paused)
             {
@@ -1746,6 +1824,7 @@ namespace HourNerdMusicPlayer
 
         public void SkipTrack(object sender, ExecutedRoutedEventArgs e)
         {
+            if (_spotifySelected) { _spotifyPage.Send("next"); return; }
             showBalloon(SKIP);
             _player.Next();
         }
@@ -1807,6 +1886,7 @@ namespace HourNerdMusicPlayer
 
         private void CanExecutePlayPauseSkip(object sender, CanExecuteRoutedEventArgs e)
         {
+            if (_spotifySelected) { e.CanExecute = _spotifyPage != null && _spotifyPage.Connected; return; }
             if (!_isActiveWindow)
             {
                 e.CanExecute = true;
@@ -1839,6 +1919,7 @@ namespace HourNerdMusicPlayer
 
         private void CanExecuteThumbsUpDown(object sender, CanExecuteRoutedEventArgs e)
         {
+            if (_spotifySelected) { e.CanExecute = false; return; }
             if (!_isActiveWindow && _player.CurrentSong != null)
             {
                 e.CanExecute = true;
@@ -1864,3 +1945,4 @@ namespace HourNerdMusicPlayer
         private void CloseButton_Click(object sender, EventArgs e) => Close();
     }
 }
+

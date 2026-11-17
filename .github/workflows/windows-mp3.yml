@@ -1,0 +1,39 @@
+name: Windows music player test
+on:
+  push:
+    branches: [mp3-export]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Windows player and existing tests
+        run: .\Build-HourNerdMusicPlayer.ps1 -Test
+      - name: Verify MP3 conversion and download recovery
+        run: .\rebuild\Test-MP3Export.ps1
+      - name: Verify local Spotify bridge
+        run: .\rebuild\Test-SpotifyBridge.ps1
+      - name: Verify native service selector
+        run: .\rebuild\Test-SpotifyUI.ps1
+      - name: Verify Spotify extension commands
+        run: node spotify/bridge.test.cjs
+      - name: Prepare complete Spotify test update
+        run: .\Build-Spotify-Update.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HourNerd-Windows-Spotify-test-update
+          path: dist/spotify-update/*
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Spotify-UI-preview
+          path: spotify-preview.png
+          retention-days: 7
